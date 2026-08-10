@@ -1,0 +1,287 @@
+"use client";
+
+import React, { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Mail, Lock, Eye, EyeOff, ShieldCheck, User, Loader2, Sparkles } from "lucide-react";
+import { getStoredUsers, setActiveUser, UserAccount } from "@/lib/authPermissions";
+import { toast } from "sonner";
+
+export default function LoginPage() {
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<"colaborador" | "administrador">("colaborador");
+  
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!email.trim() || !password.trim()) {
+      toast.error("Informe e-mail e senha para continuar");
+      return;
+    }
+
+    setLoading(true);
+    const users = getStoredUsers();
+
+    setTimeout(() => {
+      setLoading(false);
+
+      if (activeTab === "administrador") {
+        const adminUser = users.find((u) => u.email === "mhvzbusiness@gmail.com" || u.papel === "administrador") || {
+          id: "usr-admin-01",
+          nome: "Matheus (Admin)",
+          email: "mhvzbusiness@gmail.com",
+          papel: "administrador" as const,
+          setorNome: "Gestão Geral",
+          avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+          permissoes: {
+            acessoDashboard: true,
+            acessoOperacoes: true,
+            acessoSetoresTab: true,
+            acessoTarefasTab: true,
+            acessoProjetosTab: true,
+            acessoPerformanceTab: true,
+            acessoCalendarioTab: true,
+            acessoAdminPanorama: true,
+          },
+        };
+        setActiveUser(adminUser);
+        toast.success(`Bem-vindo, Administrador! (${adminUser.email})`);
+        router.push("/admin/dashboard");
+      } else {
+        const matchingUser = users.find(
+          (u) => u.email.toLowerCase() === email.toLowerCase() && u.papel === "colaborador"
+        );
+
+        if (matchingUser) {
+          setActiveUser(matchingUser);
+          toast.success(`Bem-vindo de volta, ${matchingUser.nome}!`);
+          router.push("/dashboard");
+        } else {
+          // If custom email typed, create temporary collaborator session
+          const fallbackColab: UserAccount = {
+            id: "usr-" + Date.now(),
+            nome: email.split("@")[0] || "Colaborador",
+            email: email.trim(),
+            papel: "colaborador",
+            setorNome: "Marketing",
+            avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+            permissoes: {
+              acessoDashboard: true,
+              acessoOperacoes: true,
+              acessoSetoresTab: true,
+              acessoTarefasTab: true,
+              acessoProjetosTab: true,
+              acessoPerformanceTab: true,
+              acessoCalendarioTab: true,
+              acessoAdminPanorama: false,
+            },
+          };
+          setActiveUser(fallbackColab);
+          toast.success(`Bem-vindo, ${fallbackColab.nome}!`);
+          router.push("/dashboard");
+        }
+      }
+    }, 700);
+  };
+
+  return (
+    <div className="flex min-h-screen w-full" style={{ backgroundColor: 'var(--bg)' }}>
+      
+      {/* Lado Esquerdo — Imagem de Destaque com Logo Oficial */}
+      <div className="relative hidden md:flex md:w-[48%] flex-col justify-between p-12 overflow-hidden bg-[#1E1B4B]">
+        {/* Background Image with Gradient Overlay */}
+        <div className="absolute inset-0 z-0">
+          <img
+            src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200&auto=format&fit=crop&q=80"
+            alt="Central Hashira Operations"
+            className="w-full h-full object-cover opacity-35"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#1E1B4B] via-[#1E1B4B]/70 to-[#5B50E5]/50" />
+        </div>
+
+        {/* Top Logo Container */}
+        <div className="relative z-10 flex items-center gap-4">
+          <img
+            src="/hashira-logo-vertical.png"
+            alt="HASHIRA OFICIAL"
+            className="h-16 w-auto object-contain drop-shadow-2xl"
+          />
+          <div>
+            <span className="text-sm font-extrabold text-white tracking-widest uppercase block font-['Plus_Jakarta_Sans']">
+              Gestão Cascata
+            </span>
+            <span className="text-xs font-bold text-[#C7C2F5] block">
+              Plataforma Oficial Hashira Sensi
+            </span>
+          </div>
+        </div>
+
+        {/* Central Headlines */}
+        <div className="relative z-10 space-y-4">
+          <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold bg-white/15 text-white backdrop-blur-md border border-white/20">
+            <Sparkles className="h-3.5 w-3.5" />
+            Centro de Comando & Controle
+          </div>
+          <h2 className="text-4xl font-extrabold text-white leading-tight tracking-tight font-['Plus_Jakarta_Sans']">
+            Gerencie operações com
+            <br />
+            <span className="text-[#C7C2F5]">permissões granulares.</span>
+          </h2>
+          <p className="text-sm text-white/80 leading-relaxed max-w-md">
+            Acesso sob medida para colaboradores e administradores. Controle setores, tarefas, quadros Kanban e relatórios.
+          </p>
+        </div>
+
+        {/* Bottom Features */}
+        <div className="relative z-10 flex items-center gap-6 text-xs text-white/70">
+          <span className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-emerald-400" /> Auto-cadastro de Operadores
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-[#C7C2F5]" /> Gestão de Acessos pelo Admin
+          </span>
+        </div>
+      </div>
+
+      {/* Lado Direito — Formulário de Login com Alternador */}
+      <div className="flex flex-1 items-center justify-center p-6 md:p-12">
+        <div className="w-full max-w-[440px]">
+          <div className="coursue-card p-8 sm:p-10 rounded-[28px] shadow-xl space-y-6">
+            
+            {/* Header */}
+            <div>
+              <h1 className="text-2xl font-extrabold font-['Plus_Jakarta_Sans']" style={{ color: 'var(--text-primary)' }}>
+                Acessar Plataforma
+              </h1>
+              <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                Selecione seu perfil abaixo para entrar na conta
+              </p>
+            </div>
+
+            {/* Alternador de Perfil: Colaborador vs Administrador */}
+            <div className="flex p-1.5 rounded-full" style={{ backgroundColor: 'var(--surface-alt)', border: '1px solid var(--border)' }}>
+              <button
+                type="button"
+                onClick={() => setActiveTab("colaborador")}
+                className={`flex-1 py-2.5 rounded-full text-xs font-extrabold transition-all flex items-center justify-center gap-2 ${
+                  activeTab === "colaborador"
+                    ? "bg-[#5B50E5] text-white shadow-md"
+                    : ""
+                }`}
+                style={{
+                  color: activeTab === "colaborador" ? "#FFFFFF" : "var(--text-secondary)",
+                }}
+              >
+                <User className="w-3.5 h-3.5" /> Colaborador
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("administrador")}
+                className={`flex-1 py-2.5 rounded-full text-xs font-extrabold transition-all flex items-center justify-center gap-2 ${
+                  activeTab === "administrador"
+                    ? "bg-[#1E1B4B] text-white shadow-md"
+                    : ""
+                }`}
+                style={{
+                  color: activeTab === "administrador" ? "#FFFFFF" : "var(--text-secondary)",
+                }}
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-amber-400" /> Administrador
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Email */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider block" style={{ color: 'var(--text-primary)' }}>
+                  {activeTab === "administrador" ? "E-mail Administrativo" : "E-mail do Colaborador"}
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: 'var(--text-muted)' }} />
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={activeTab === "administrador" ? "admin@hashira.com" : "seu@hashira.com"}
+                    className="coursue-input pl-11"
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider block" style={{ color: 'var(--text-primary)' }}>
+                  Senha
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: 'var(--text-muted)' }} />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="coursue-input pl-11 pr-11"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Submit */}
+              <button
+                type="submit"
+                disabled={loading}
+                className={`w-full h-12 rounded-full font-bold text-xs text-white transition-all flex items-center justify-center gap-2 shadow-md ${
+                  activeTab === "administrador"
+                    ? "bg-[#1E1B4B] hover:bg-[#121033]"
+                    : "bg-[#5B50E5] hover:bg-[#483EA8]"
+                }`}
+              >
+                {loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : activeTab === "administrador" ? (
+                  "Entrar como Administrador 👑 →"
+                ) : (
+                  "Entrar como Colaborador →"
+                )}
+              </button>
+            </form>
+
+            {/* Self-service Registration link ONLY for Operators/Collaborators */}
+            {activeTab === "colaborador" && (
+              <div className="text-center text-xs pt-4" style={{ borderTop: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+                Ainda não possui conta de operador?{" "}
+                <Link
+                  href="/cadastro"
+                  className="font-bold text-[#5B50E5] hover:underline block mt-1"
+                >
+                  Criar conta de Colaborador (Auto-cadastro) →
+                </Link>
+              </div>
+            )}
+
+            {activeTab === "administrador" && (
+              <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-[11px] text-amber-800 text-center">
+                🔒 Área restrita para gestores. O acesso permite configurar permissões da equipe.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
