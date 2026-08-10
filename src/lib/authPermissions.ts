@@ -92,11 +92,51 @@ export const USERS_SEED: UserAccount[] = [
 const STORAGE_KEY_USERS = "central_hashira_users_v1";
 const STORAGE_KEY_ACTIVE_USER = "central_hashira_active_user_v1";
 
+export function normalizeUserAccount(raw: any): UserAccount {
+  if (!raw || typeof raw !== "object") return USERS_SEED[0];
+  const email = String(raw.email || "usuario@hashira.com");
+  const nome = String(raw.nome || email.split("@")[0] || "Colaborador");
+  const papel = raw.papel === "administrador" || email.toLowerCase() === "mhvzbusiness@gmail.com" ? "administrador" : "colaborador";
+  const setorNome = String(raw.setorNome || "Estrutura de Funil");
+  const setoresNomes = Array.isArray(raw.setoresNomes) && raw.setoresNomes.length > 0
+    ? raw.setoresNomes.map(String)
+    : [setorNome];
+
+  return {
+    id: String(raw.id || "usr-" + Date.now()),
+    nome,
+    nickname: raw.nickname ? String(raw.nickname) : nome.split(" ")[0],
+    comoQuerSerChamado: raw.comoQuerSerChamado ? String(raw.comoQuerSerChamado) : (raw.nickname ? String(raw.nickname) : nome.split(" ")[0]),
+    cargo: raw.cargo ? String(raw.cargo) : (papel === "administrador" ? "Administrador Geral" : "Operador de Demandas"),
+    bio: raw.bio ? String(raw.bio) : "Integrante da equipe Hashira.",
+    email,
+    papel,
+    setorNome,
+    setoresNomes,
+    avatarUrl: String(raw.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"),
+    permissoes: {
+      acessoDashboard: raw.permissoes?.acessoDashboard ?? true,
+      acessoOperacoes: raw.permissoes?.acessoOperacoes ?? true,
+      acessoSetoresTab: raw.permissoes?.acessoSetoresTab ?? true,
+      acessoTarefasTab: raw.permissoes?.acessoTarefasTab ?? true,
+      acessoProjetosTab: raw.permissoes?.acessoProjetosTab ?? true,
+      acessoPerformanceTab: raw.permissoes?.acessoPerformanceTab ?? true,
+      acessoCalendarioTab: raw.permissoes?.acessoCalendarioTab ?? true,
+      acessoAdminPanorama: raw.permissoes?.acessoAdminPanorama ?? (papel === "administrador"),
+    },
+  };
+}
+
 export function getStoredUsers(): UserAccount[] {
   if (typeof window === "undefined") return USERS_SEED;
   try {
     const raw = localStorage.getItem(STORAGE_KEY_USERS);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map(normalizeUserAccount);
+      }
+    }
   } catch (e) {
     console.error("Erro ao carregar usuários de auth", e);
   }
@@ -107,7 +147,8 @@ export function getStoredUsers(): UserAccount[] {
 export function saveStoredUsers(users: UserAccount[]) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
+    const normalized = users.map(normalizeUserAccount);
+    localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(normalized));
   } catch (e) {
     console.error("Erro ao salvar usuários de auth", e);
   }
@@ -117,7 +158,12 @@ export function getActiveUser(): UserAccount | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(STORAGE_KEY_ACTIVE_USER);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        return normalizeUserAccount(parsed);
+      }
+    }
   } catch (e) {
     console.error("Erro ao carregar usuário ativo", e);
   }
@@ -127,7 +173,8 @@ export function getActiveUser(): UserAccount | null {
 export function setActiveUser(user: UserAccount) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(STORAGE_KEY_ACTIVE_USER, JSON.stringify(user));
+    const normalized = normalizeUserAccount(user);
+    localStorage.setItem(STORAGE_KEY_ACTIVE_USER, JSON.stringify(normalized));
   } catch (e) {
     console.error("Erro ao salvar usuário ativo", e);
   }
@@ -145,10 +192,10 @@ export function clearActiveUser() {
 export function updateActiveUserProfile(updates: Partial<UserAccount>): UserAccount | null {
   const current = getActiveUser();
   if (!current) return null;
-  const updatedUser: UserAccount = {
+  const updatedUser: UserAccount = normalizeUserAccount({
     ...current,
     ...updates,
-  };
+  });
   setActiveUser(updatedUser);
 
   // Synchronize in users list

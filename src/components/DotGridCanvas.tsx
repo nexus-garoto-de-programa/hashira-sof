@@ -96,7 +96,7 @@ export const DotGridCanvas: React.FC<DotGridProps> = ({
     initGrid();
 
     const getDotColor = (): [number, number, number] => {
-      const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+      const isDark = typeof document !== "undefined" && document.documentElement?.getAttribute("data-theme") === "dark";
       return isDark ? [139, 124, 248] : [91, 80, 229]; // #8B7CF8 for dark, #5B50E5 for light
     };
 

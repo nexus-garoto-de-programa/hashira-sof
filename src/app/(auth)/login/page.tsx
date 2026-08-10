@@ -31,27 +31,15 @@ export default function LoginPage() {
       setLoading(false);
 
       if (activeTab === "administrador") {
-        const adminUser = users.find((u) => u.email === "mhvzbusiness@gmail.com" || u.papel === "administrador") || {
-          id: "usr-admin-01",
-          nome: "Matheus (Admin)",
-          email: "mhvzbusiness@gmail.com",
-          papel: "administrador" as const,
-          setorNome: "Gestão Geral",
-          avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-          permissoes: {
-            acessoDashboard: true,
-            acessoOperacoes: true,
-            acessoSetoresTab: true,
-            acessoTarefasTab: true,
-            acessoProjetosTab: true,
-            acessoPerformanceTab: true,
-            acessoCalendarioTab: true,
-            acessoAdminPanorama: true,
-          },
-        };
-        setActiveUser(adminUser);
-        toast.success(`Bem-vindo, Administrador! (${adminUser.email})`);
-        router.push("/admin/dashboard");
+        const adminUser = users.find((u) => u.email.toLowerCase() === email.toLowerCase() && u.papel === "administrador") || (email.toLowerCase() === "mhvzbusiness@gmail.com" ? users.find(u => u.email === "mhvzbusiness@gmail.com") : null);
+
+        if (adminUser) {
+          setActiveUser(adminUser);
+          toast.success(`Bem-vindo, Administrador! (${adminUser.email})`);
+          router.push("/admin/dashboard");
+        } else {
+          toast.error("E-mail administrativo ou senha incorretos. Acesso restrito a administradores.");
+        }
       } else {
         const matchingUser = users.find(
           (u) => u.email.toLowerCase() === email.toLowerCase() && u.papel === "colaborador"
@@ -62,28 +50,7 @@ export default function LoginPage() {
           toast.success(`Bem-vindo de volta, ${matchingUser.nome}!`);
           router.push("/dashboard");
         } else {
-          // If custom email typed, create temporary collaborator session
-          const fallbackColab: UserAccount = {
-            id: "usr-" + Date.now(),
-            nome: email.split("@")[0] || "Colaborador",
-            email: email.trim(),
-            papel: "colaborador",
-            setorNome: "Marketing",
-            avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-            permissoes: {
-              acessoDashboard: true,
-              acessoOperacoes: true,
-              acessoSetoresTab: true,
-              acessoTarefasTab: true,
-              acessoProjetosTab: true,
-              acessoPerformanceTab: true,
-              acessoCalendarioTab: true,
-              acessoAdminPanorama: false,
-            },
-          };
-          setActiveUser(fallbackColab);
-          toast.success(`Bem-vindo, ${fallbackColab.nome}!`);
-          router.push("/dashboard");
+          toast.error("E-mail ou senha incorretos. Caso ainda não possua conta, realize o pré-cadastro abaixo.");
         }
       }
     }, 700);
