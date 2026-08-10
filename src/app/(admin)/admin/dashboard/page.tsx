@@ -52,8 +52,6 @@ export default function AdminDashboardPage() {
     setUserChecked(true);
   }, [router]);
 
-  if (!userChecked) return null;
-
   const updateDemandas = (novas: Demanda[]) => {
     setDemandas(novas);
     saveStoredDemandas(novas);
@@ -119,6 +117,8 @@ export default function AdminDashboardPage() {
       .filter((s) => s.saude !== "saudavel")
       .sort((a, b) => b.atrasadas - a.atrasadas);
   }, [setorPanorama]);
+
+  if (!userChecked) return null;
 
   const handleDeleteDemanda = (id: string) => {
     const novas = demandas.filter((d) => d.id !== id);

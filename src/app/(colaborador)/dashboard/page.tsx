@@ -55,19 +55,7 @@ export default function CollaboratorDashboardPage() {
     setUser(active);
   }, [router]);
 
-  if (!user) return null;
-
-  const greeting = getGreeting();
-  const userName = user.comoQuerSerChamado || user.nickname || user.nome || "Colaborador";
-  const userSector = user.setorNome || "Estrutura de Funil";
-  const userAvatar = user.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80";
-
-  const updateDemandasState = (novas: Demanda[]) => {
-    setDemandas(novas);
-    saveStoredDemandas(novas);
-  };
-
-  // Filter demands for this collaborator's selected sectors or assigned user
+  // Filter demands for this collaborator's selected sectors or assigned user (Hook called unconditionally)
   const userDemandas = useMemo(() => {
     if (!user) return demandas;
     const userSectorsList = user.setoresNomes && user.setoresNomes.length > 0
@@ -78,7 +66,7 @@ export default function CollaboratorDashboardPage() {
       const isSetorMatch = userSectorsList.includes(d.setorNome.toLowerCase().trim());
       const isUserMatch =
         (d.colaboradorId && d.colaboradorId === user.id) ||
-        (d.colaboradorNome && d.colaboradorNome.toLowerCase() === user.nome.toLowerCase());
+        (d.colaboradorNome && d.colaboradorNome.toLowerCase() === user.nome?.toLowerCase());
       return isSetorMatch || isUserMatch;
     });
   }, [demandas, user]);
@@ -96,16 +84,29 @@ export default function CollaboratorDashboardPage() {
     });
   }, [userDemandas, searchQuery, statusFilter]);
 
-  const demandasConcluidas = userDemandas.filter((d) => d.status === "concluida").length;
-  const totalDemandas = userDemandas.length;
-  const pctConclusaoGeral = totalDemandas > 0 ? Math.round((demandasConcluidas / totalDemandas) * 100) : 0;
-
   const proximasDemandas = useMemo(() => {
     return [...userDemandas]
       .filter((d) => d.status !== "concluida")
       .sort((a, b) => new Date(a.prazo).getTime() - new Date(b.prazo).getTime())
       .slice(0, 3);
   }, [userDemandas]);
+
+  // Early return ONLY after all hooks are declared to strictly follow React Rules of Hooks
+  if (!user) return null;
+
+  const greeting = getGreeting();
+  const userName = user.comoQuerSerChamado || user.nickname || user.nome || "Colaborador";
+  const userSector = user.setorNome || "Estrutura de Funil";
+  const userAvatar = user.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80";
+
+  const updateDemandasState = (novas: Demanda[]) => {
+    setDemandas(novas);
+    saveStoredDemandas(novas);
+  };
+
+  const demandasConcluidas = userDemandas.filter((d) => d.status === "concluida").length;
+  const totalDemandas = userDemandas.length;
+  const pctConclusaoGeral = totalDemandas > 0 ? Math.round((demandasConcluidas / totalDemandas) * 100) : 0;
 
   const chartData = [
     { name: "Seg", concluida: 4 },
@@ -234,7 +235,7 @@ export default function CollaboratorDashboardPage() {
                     <span className="text-[#C7C2F5]">{userName} 👋</span>
                   </h1>
                   <p className="mt-2 text-sm text-white/80 max-w-xl">
-                    Você tem <strong className="text-white font-bold">{demandas.filter(d => d.status !== 'concluida').length} demandas pendentes</strong> neste período.
+                    Você tem <strong className="text-white font-bold">{userDemandas.filter(d => d.status !== 'concluida').length} demandas pendentes</strong> neste período.
                   </p>
                 </div>
 
@@ -243,14 +244,14 @@ export default function CollaboratorDashboardPage() {
                   <div className="bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-2xl text-white min-w-[130px]">
                     <span className="text-[11px] font-semibold text-white/70 block uppercase">Hoje</span>
                     <span className="text-2xl font-extrabold font-['Plus_Jakarta_Sans']">
-                      {demandas.filter(d => d.status === 'concluida').length}/{demandas.length}
+                      {userDemandas.filter(d => d.status === 'concluida').length}/{userDemandas.length}
                     </span>
                     <span className="text-[10px] text-emerald-300 block mt-1">Concluídas</span>
                   </div>
                   <div className="bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-2xl text-white min-w-[130px]">
                     <span className="text-[11px] font-semibold text-white/70 block uppercase">Esta Semana</span>
                     <span className="text-2xl font-extrabold font-['Plus_Jakarta_Sans']">
-                      {demandas.filter(d => d.status === 'em_andamento').length}
+                      {userDemandas.filter(d => d.status === 'em_andamento').length}
                     </span>
                     <span className="text-[10px] text-[#C7C2F5] block mt-1">Em Andamento</span>
                   </div>

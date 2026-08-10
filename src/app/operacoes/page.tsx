@@ -39,6 +39,10 @@ type ActiveTab = "setores" | "tarefas" | "projetos" | "performance" | "calendari
 export default function CentralOperacoesPage() {
   const router = useRouter();
   const [activeUser, setActiveUser] = useState<UserAccount | null>(null);
+  const [activeTab, setActiveTab] = useState<ActiveTab>("setores");
+  const [setores, setSetores] = useState<OperacoesSetor[]>(getStoredOperacoesSetores);
+  const [tarefas, setTarefas] = useState<OperacoesTarefa[]>(getStoredOperacoesTarefas);
+  const [showNovaModal, setShowNovaModal] = useState(false);
 
   useEffect(() => {
     const user = getActiveUser();
@@ -52,11 +56,6 @@ export default function CentralOperacoesPage() {
   if (!activeUser) return null;
 
   const isAdmin = activeUser.email === "mhvzbusiness@gmail.com" || activeUser.papel === "administrador";
-
-  const [activeTab, setActiveTab] = useState<ActiveTab>("setores");
-  const [setores, setSetores] = useState<OperacoesSetor[]>(getStoredOperacoesSetores);
-  const [tarefas, setTarefas] = useState<OperacoesTarefa[]>(getStoredOperacoesTarefas);
-  const [showNovaModal, setShowNovaModal] = useState(false);
 
   const updateSetoresState = (novos: OperacoesSetor[]) => {
     setSetores(novos);
