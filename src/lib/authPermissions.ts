@@ -108,15 +108,15 @@ export function saveStoredUsers(users: UserAccount[]) {
   }
 }
 
-export function getActiveUser(): UserAccount {
-  if (typeof window === "undefined") return USERS_SEED[0];
+export function getActiveUser(): UserAccount | null {
+  if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(STORAGE_KEY_ACTIVE_USER);
     if (raw) return JSON.parse(raw);
   } catch (e) {
     console.error("Erro ao carregar usuário ativo", e);
   }
-  return USERS_SEED[0];
+  return null;
 }
 
 export function setActiveUser(user: UserAccount) {
@@ -128,8 +128,18 @@ export function setActiveUser(user: UserAccount) {
   }
 }
 
-export function updateActiveUserProfile(updates: Partial<UserAccount>): UserAccount {
+export function clearActiveUser() {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(STORAGE_KEY_ACTIVE_USER);
+  } catch (e) {
+    console.error("Erro ao limpar sessão do usuário", e);
+  }
+}
+
+export function updateActiveUserProfile(updates: Partial<UserAccount>): UserAccount | null {
   const current = getActiveUser();
+  if (!current) return null;
   const updatedUser: UserAccount = {
     ...current,
     ...updates,

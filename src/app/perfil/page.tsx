@@ -3,12 +3,14 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Camera, User, Mail, Briefcase, Sparkles, Check, Upload, ShieldCheck, Heart } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { getActiveUser, updateActiveUserProfile, UserAccount, USERS_SEED } from "@/lib/authPermissions";
 import { AppSidebar } from "@/components/AppSidebar";
 import { toast } from "sonner";
 
 export default function PerfilPage() {
-  const [user, setUser] = useState<UserAccount>(() => USERS_SEED[0]);
+  const router = useRouter();
+  const [user, setUser] = useState<UserAccount | null>(null);
   const [nome, setNome] = useState("");
   const [nickname, setNickname] = useState("");
   const [comoQuerSerChamado, setComoQuerSerChamado] = useState("");
@@ -23,6 +25,10 @@ export default function PerfilPage() {
 
   useEffect(() => {
     const active = getActiveUser();
+    if (!active) {
+      router.push("/login");
+      return;
+    }
     setUser(active);
     setNome(active.nome || "");
     setNickname(active.nickname || active.nome?.split(" ")[0] || "");
@@ -32,7 +38,9 @@ export default function PerfilPage() {
     setSetorNome(active.setorNome || "Geral");
     setBio(active.bio || "Membro integrante do time Hashira.");
     setAvatarUrl(active.avatarUrl || "");
-  }, []);
+  }, [router]);
+
+  if (!user) return null;
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

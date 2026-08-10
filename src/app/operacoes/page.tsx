@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutGrid,
@@ -36,11 +37,19 @@ import { getActiveUser, USERS_SEED, UserAccount } from "@/lib/authPermissions";
 type ActiveTab = "setores" | "tarefas" | "projetos" | "performance" | "calendario";
 
 export default function CentralOperacoesPage() {
-  const [activeUser, setActiveUser] = useState<UserAccount>(() => USERS_SEED[0]);
+  const router = useRouter();
+  const [activeUser, setActiveUser] = useState<UserAccount | null>(null);
 
   useEffect(() => {
-    setActiveUser(getActiveUser());
-  }, []);
+    const user = getActiveUser();
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    setActiveUser(user);
+  }, [router]);
+
+  if (!activeUser) return null;
 
   const isAdmin = activeUser.email === "mhvzbusiness@gmail.com" || activeUser.papel === "administrador";
 

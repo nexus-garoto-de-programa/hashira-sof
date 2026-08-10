@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, Trash2, User } from "lucide-react";
 import { HASHIRAS_SEED } from "@/lib/demands";
+import { getActiveUser } from "@/lib/authPermissions";
 import { AppSidebar } from "@/components/AppSidebar";
 import { toast } from "sonner";
 
@@ -56,8 +58,21 @@ const COLABORADORES_SEED: Colaborador[] = [
 ];
 
 export default function AdminColaboradoresPage() {
+  const router = useRouter();
   const [colaboradores, setColaboradores] = useState<Colaborador[]>(COLABORADORES_SEED);
   const [showModal, setShowModal] = useState(false);
+  const [userChecked, setUserChecked] = useState(false);
+
+  useEffect(() => {
+    const user = getActiveUser();
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    setUserChecked(true);
+  }, [router]);
+
+  if (!userChecked) return null;
 
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");

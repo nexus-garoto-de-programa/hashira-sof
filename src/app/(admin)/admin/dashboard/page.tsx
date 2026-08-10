@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Shield,
@@ -30,14 +30,29 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
+import { useRouter } from "next/navigation";
+import { getActiveUser } from "@/lib/authPermissions";
 import { toast } from "sonner";
 
 export default function AdminDashboardPage() {
+  const router = useRouter();
   const [demandas, setDemandas] = useState<Demanda[]>(getStoredDemandas);
   const [setorSelecionado, setSetorSelecionado] = useState<string>("todos");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDemanda, setSelectedDemanda] = useState<Demanda | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [userChecked, setUserChecked] = useState(false);
+
+  useEffect(() => {
+    const user = getActiveUser();
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    setUserChecked(true);
+  }, [router]);
+
+  if (!userChecked) return null;
 
   const updateDemandas = (novas: Demanda[]) => {
     setDemandas(novas);

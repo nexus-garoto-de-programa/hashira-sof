@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { ShieldCheck, UserCheck, Check, X, Search, Sparkles } from "lucide-react";
 import {
   getStoredUsers,
   saveStoredUsers,
+  getActiveUser,
   UserAccount,
   UserPermissions,
 } from "@/lib/authPermissions";
@@ -12,8 +14,21 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { toast } from "sonner";
 
 export default function AdminPermissoesPage() {
+  const router = useRouter();
   const [users, setUsers] = useState<UserAccount[]>(getStoredUsers);
   const [searchQuery, setSearchQuery] = useState("");
+  const [userChecked, setUserChecked] = useState(false);
+
+  useEffect(() => {
+    const user = getActiveUser();
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    setUserChecked(true);
+  }, [router]);
+
+  if (!userChecked) return null;
 
   const updateUsersState = (newUsers: UserAccount[]) => {
     setUsers(newUsers);

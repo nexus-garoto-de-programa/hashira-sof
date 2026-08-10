@@ -18,10 +18,10 @@ import {
 } from "lucide-react";
 import {
   getActiveUser,
+  clearActiveUser,
   getAdminSimulatedRole,
   setAdminSimulatedRole,
   UserAccount,
-  USERS_SEED,
 } from "@/lib/authPermissions";
 import { useTheme } from "@/components/ThemeProvider";
 import { toast } from "sonner";
@@ -40,16 +40,22 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   const pathname = usePathname();
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
-  const [currentUser, setCurrentUser] = useState<UserAccount>(() => USERS_SEED[0]);
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
   const [simulatedRole, setSimulatedRole] = useState<"administrador" | "colaborador">("administrador");
 
   useEffect(() => {
-    setCurrentUser(getActiveUser());
+    const active = getActiveUser();
+    if (!active) {
+      router.push("/login");
+      return;
+    }
+    setCurrentUser(active);
     setSimulatedRole(getAdminSimulatedRole());
-  }, [pathname]);
+  }, [pathname, router]);
 
   const handleSignOut = (e: React.MouseEvent) => {
     e.stopPropagation();
+    clearActiveUser();
     toast.success("Sessão encerrada");
     router.push("/login");
   };
@@ -66,21 +72,25 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     }
   };
 
+  if (!currentUser) {
+    return null;
+  }
+
   const isAdminAccount = currentUser.email === "mhvzbusiness@gmail.com" || currentUser.papel === "administrador";
   const activeRoleView = isAdminAccount ? simulatedRole : "colaborador";
 
   const displayName = userName || currentUser.comoQuerSerChamado || currentUser.nickname || currentUser.nome;
   const displayEmail = userEmail || currentUser.email;
   const avatar = currentUser.avatarUrl;
-  const userInitial = displayName.charAt(0).toUpperCase();
+  const userInitial = displayName ? displayName.charAt(0).toUpperCase() : "U";
 
   // Dynamic Navigation Items filtered by Active Permissions & Simulated Role
   const navItems = [
-    ...(currentUser.permissoes.acessoDashboard
+    ...(currentUser.permissoes?.acessoDashboard
       ? [{ href: "/dashboard", label: "Meu Painel", icon: Home }]
       : []),
     { href: "/perfil", label: "Meu Perfil", icon: User },
-    ...(currentUser.permissoes.acessoOperacoes
+    ...(currentUser.permissoes?.acessoOperacoes
       ? [{ href: "/operacoes", label: "Central de Operações", icon: Command }]
       : []),
     ...(activeRoleView === "administrador"
@@ -236,7 +246,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               type="button"
               onClick={handleSignOut}
               className="p-1.5 rounded-lg text-rose-500 transition-colors"
-              style={{ }}
               onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--rose-hover-bg)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
               title="Sair da Conta"

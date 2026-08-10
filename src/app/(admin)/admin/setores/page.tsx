@@ -1,13 +1,28 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, Trash2, Layers } from "lucide-react";
 import { HASHIRAS_SEED, SetorHashira, getStoredSetores, saveStoredSetores } from "@/lib/demands";
+import { getActiveUser } from "@/lib/authPermissions";
 import { AppSidebar } from "@/components/AppSidebar";
 import { toast } from "sonner";
 
 export default function AdminSetoresPage() {
+  const router = useRouter();
   const [setores, setSetores] = useState<SetorHashira[]>(getStoredSetores);
+  const [userChecked, setUserChecked] = useState(false);
+
+  useEffect(() => {
+    const user = getActiveUser();
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    setUserChecked(true);
+  }, [router]);
+
+  if (!userChecked) return null;
 
   const [showModal, setShowModal] = useState(false);
   const [nome, setNome] = useState("");

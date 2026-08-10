@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -35,8 +36,9 @@ function getGreeting(): string {
 }
 
 export default function CollaboratorDashboardPage() {
+  const router = useRouter();
   const [demandas, setDemandas] = useState<Demanda[]>(getStoredDemandas);
-  const [user, setUser] = useState<UserAccount>(() => USERS_SEED[0]);
+  const [user, setUser] = useState<UserAccount | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [periodo, setPeriodo] = useState<PeriodoFilter>("semana");
@@ -45,8 +47,15 @@ export default function CollaboratorDashboardPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
-    setUser(getActiveUser());
-  }, []);
+    const active = getActiveUser();
+    if (!active) {
+      router.push("/login");
+      return;
+    }
+    setUser(active);
+  }, [router]);
+
+  if (!user) return null;
 
   const greeting = getGreeting();
   const userName = user.comoQuerSerChamado || user.nickname || user.nome || "Colaborador";
