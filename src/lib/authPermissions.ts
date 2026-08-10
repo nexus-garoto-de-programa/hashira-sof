@@ -50,6 +50,8 @@ export const USERS_SEED: UserAccount[] = [
   {
     id: "usr-admin-01",
     nome: "Matheus (Admin)",
+    nickname: "Matheus (Admin)",
+    comoQuerSerChamado: "Matheus (Admin)",
     email: "mhvzbusiness@gmail.com",
     papel: "administrador",
     setorNome: "Gestão Geral",
@@ -60,6 +62,8 @@ export const USERS_SEED: UserAccount[] = [
   {
     id: "usr-01",
     nome: "Matheus Ramos",
+    nickname: "Matheus Ramos",
+    comoQuerSerChamado: "Matheus Ramos",
     email: "matheus@hashira.com",
     papel: "colaborador",
     setorNome: "Estrutura de Funil",
@@ -70,6 +74,8 @@ export const USERS_SEED: UserAccount[] = [
   {
     id: "usr-02",
     nome: "Henrique Silva",
+    nickname: "Henrique",
+    comoQuerSerChamado: "Henrique Silva",
     email: "henrique@hashira.com",
     papel: "colaborador",
     setorNome: "Marketing",
@@ -80,6 +86,8 @@ export const USERS_SEED: UserAccount[] = [
   {
     id: "usr-03",
     nome: "Debora Santos",
+    nickname: "Debora",
+    comoQuerSerChamado: "Debora Santos",
     email: "debora@hashira.com",
     papel: "colaborador",
     setorNome: "Pós-venda, Suporte e Atendimento ao Cliente",
@@ -89,8 +97,8 @@ export const USERS_SEED: UserAccount[] = [
   },
 ];
 
-const STORAGE_KEY_USERS = "central_hashira_users_v1";
-const STORAGE_KEY_ACTIVE_USER = "central_hashira_active_user_v1";
+const STORAGE_KEY_USERS = "central_hashira_users_v2";
+const STORAGE_KEY_ACTIVE_USER = "central_hashira_active_user_v2";
 
 export function normalizeUserAccount(raw: any): UserAccount {
   if (!raw || typeof raw !== "object") return USERS_SEED[0];
@@ -102,11 +110,14 @@ export function normalizeUserAccount(raw: any): UserAccount {
     ? raw.setoresNomes.map(String)
     : [setorNome];
 
+  const nickname = raw.nickname ? String(raw.nickname) : nome;
+  const comoQuerSerChamado = raw.comoQuerSerChamado ? String(raw.comoQuerSerChamado) : nickname;
+
   return {
     id: String(raw.id || "usr-" + Date.now()),
     nome,
-    nickname: raw.nickname ? String(raw.nickname) : nome.split(" ")[0],
-    comoQuerSerChamado: raw.comoQuerSerChamado ? String(raw.comoQuerSerChamado) : (raw.nickname ? String(raw.nickname) : nome.split(" ")[0]),
+    nickname,
+    comoQuerSerChamado,
     cargo: raw.cargo ? String(raw.cargo) : (papel === "administrador" ? "Administrador Geral" : "Operador de Demandas"),
     bio: raw.bio ? String(raw.bio) : "Integrante da equipe Hashira.",
     email,
@@ -147,8 +158,13 @@ export function getStoredUsers(): UserAccount[] {
 export function saveStoredUsers(users: UserAccount[]) {
   if (typeof window === "undefined") return;
   try {
-    const normalized = users.map(normalizeUserAccount);
-    localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(normalized));
+    const map = new Map<string, UserAccount>();
+    users.forEach((u) => {
+      const normalized = normalizeUserAccount(u);
+      map.set(normalized.email.toLowerCase().trim(), normalized);
+    });
+    const deduplicated = Array.from(map.values());
+    localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(deduplicated));
   } catch (e) {
     console.error("Erro ao salvar usuários de auth", e);
   }

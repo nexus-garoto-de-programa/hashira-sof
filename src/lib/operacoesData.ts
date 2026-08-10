@@ -60,18 +60,63 @@ export const TEAM_MEMBERS: TeamMember[] = [
 
 export const SETORES_OPERACOES: OperacoesSetor[] = [
   {
-    id: "editores",
-    nome: "Editores",
-    descricao: "Cortes, edições e finalizações de vídeo",
-    icone: "Scissors",
+    id: "sec-funil",
+    nome: "Estrutura de Funil",
+    descricao: "Arquitetura de landing pages, checkout, automações e VSL",
+    icone: "Layers",
+    totalTarefas: 0,
+    concluidas: 0,
+    pendentes: 0,
+  },
+  {
+    id: "sec-marketing",
+    nome: "Marketing",
+    descricao: "Aquisição de tráfego, gestão de mídia e branding",
+    icone: "Sparkles",
+    totalTarefas: 0,
+    concluidas: 0,
+    pendentes: 0,
+  },
+  {
+    id: "sec-posvenda",
+    nome: "Pós-venda, Suporte e Atendimento ao Cliente",
+    descricao: "Atendimento direto, suporte técnico e retenção",
+    icone: "Headphones",
+    totalTarefas: 0,
+    concluidas: 0,
+    pendentes: 0,
+  },
+  {
+    id: "sec-servicos",
+    nome: "Serviços",
+    descricao: "Prestação de serviços operacionais e execução técnica",
+    icone: "Briefcase",
+    totalTarefas: 0,
+    concluidas: 0,
+    pendentes: 0,
+  },
+  {
+    id: "sec-produtos",
+    nome: "Produtos",
+    descricao: "Desenvolvimento e aprimoramento de produtos e ofertas",
+    icone: "Package",
+    totalTarefas: 0,
+    concluidas: 0,
+    pendentes: 0,
+  },
+  {
+    id: "sec-discord",
+    nome: "Discord",
+    descricao: "Moderação de comunidade, eventos e cargos",
+    icone: "MessageSquare",
     totalTarefas: 0,
     concluidas: 0,
     pendentes: 0,
   },
   {
     id: "design",
-    nome: "Design",
-    descricao: "Banners, identidade visual e peças gráficas",
+    nome: "Design & Peças Gráficas",
+    descricao: "Banners, identidade visual e materiais publicitários",
     icone: "Palette",
     capaUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80",
     totalTarefas: 0,
@@ -79,8 +124,17 @@ export const SETORES_OPERACOES: OperacoesSetor[] = [
     pendentes: 0,
   },
   {
+    id: "editores",
+    nome: "Editores & Cortes",
+    descricao: "Cortes, edições e finalizações de vídeo",
+    icone: "Scissors",
+    totalTarefas: 0,
+    concluidas: 0,
+    pendentes: 0,
+  },
+  {
     id: "torres",
-    nome: "Torres",
+    nome: "Torres & Operações",
     descricao: "Estrutura, operação e suporte das torres",
     icone: "Building",
     capaUrl: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&auto=format&fit=crop&q=80",
@@ -97,16 +151,21 @@ export const PROJETOS_OPERACOES_SEED: OperacoesProjeto[] = [];
 
 export const ACTIVITIES_SEED: ActivityLog[] = [];
 
-const STORAGE_KEY_OPER_TAREFAS = "central_operacoes_tarefas_v3";
-const STORAGE_KEY_OPER_PROJETOS = "central_operacoes_projetos_v3";
-const STORAGE_KEY_OPER_SETORES = "central_operacoes_setores_v3";
-const STORAGE_OPER_CLEARED = "central_operacoes_tarefas_cleared_v3";
+const STORAGE_KEY_OPER_TAREFAS = "central_operacoes_tarefas_v4";
+const STORAGE_KEY_OPER_PROJETOS = "central_operacoes_projetos_v4";
+const STORAGE_KEY_OPER_SETORES = "central_operacoes_setores_v4";
+const STORAGE_OPER_CLEARED = "central_operacoes_tarefas_cleared_v4";
 
 export function getStoredOperacoesSetores(): OperacoesSetor[] {
   if (typeof window === "undefined") return SETORES_OPERACOES;
   try {
     const raw = localStorage.getItem(STORAGE_KEY_OPER_SETORES);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length >= SETORES_OPERACOES.length) {
+        return parsed;
+      }
+    }
   } catch (e) {
     console.error("Erro ao carregar setores da Central de Operações", e);
   }

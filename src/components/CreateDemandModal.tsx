@@ -191,7 +191,7 @@ export const CreateDemandModal: React.FC<CreateDemandModalProps> = ({
                 )}
               </label>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto pr-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-52 overflow-y-auto pr-1">
                 {availableUsers.map((u) => {
                   const isSelected = selectedUser?.id === u.id;
                   const displayName = u.comoQuerSerChamado || u.nickname || u.nome;
@@ -219,7 +219,7 @@ export const CreateDemandModal: React.FC<CreateDemandModalProps> = ({
                             {displayName}
                           </span>
                           <span className="text-[10px] block truncate" style={{ color: 'var(--text-secondary)' }}>
-                            {userSectors}
+                            {u.email} ({userSectors})
                           </span>
                         </div>
                       </div>

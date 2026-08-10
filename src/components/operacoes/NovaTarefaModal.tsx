@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Sparkles, CheckCircle2 } from "lucide-react";
+import { X, Plus, Sparkles, CheckCircle2, User as UserIcon } from "lucide-react";
 import { OperacoesTarefa, SETORES_OPERACOES, ColumnStatus, TeamMember } from "@/lib/operacoesData";
 import { getStoredUsers, UserAccount } from "@/lib/authPermissions";
 import { toast } from "sonner";
@@ -17,7 +17,7 @@ export const NovaTarefaModal: React.FC<NovaTarefaModalProps> = ({ open, onClose,
   if (!open) return null;
 
   const [titulo, setTitulo] = useState("");
-  const [setorId, setSetorId] = useState(SETORES_OPERACOES[1].id); // Design
+  const [setorId, setSetorId] = useState(SETORES_OPERACOES[0].id); // Estrutura de Funil
   const [status, setStatus] = useState<ColumnStatus>("nao_iniciado");
   
   const [usersList, setUsersList] = useState<UserAccount[]>([]);
@@ -45,7 +45,7 @@ export const NovaTarefaModal: React.FC<NovaTarefaModalProps> = ({ open, onClose,
       return;
     }
 
-    const setorObj = SETORES_OPERACOES.find((s) => s.id === setorId) || SETORES_OPERACOES[1];
+    const setorObj = SETORES_OPERACOES.find((s) => s.id === setorId) || SETORES_OPERACOES[0];
     const userDisplayName = selectedUser.comoQuerSerChamado || selectedUser.nickname || selectedUser.nome;
     const initials = userDisplayName
       .split(" ")
@@ -96,12 +96,12 @@ export const NovaTarefaModal: React.FC<NovaTarefaModalProps> = ({ open, onClose,
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          className="relative w-full max-w-lg rounded-[28px] p-6 shadow-2xl z-10 space-y-5"
+          className="relative w-full max-w-xl rounded-[28px] p-6 sm:p-8 shadow-2xl z-10 space-y-5 my-6"
           style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}
         >
           <div className="flex items-center justify-between pb-4" style={{ borderBottom: '1px solid var(--border)' }}>
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-[#5B50E5] text-white">
+              <div className="p-2.5 rounded-2xl bg-[#5B50E5] text-white shadow-md shadow-[#5B50E5]/25">
                 <Sparkles className="w-5 h-5" />
               </div>
               <div>
@@ -116,9 +116,9 @@ export const NovaTarefaModal: React.FC<NovaTarefaModalProps> = ({ open, onClose,
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="text-xs font-bold uppercase tracking-wider block mb-1" style={{ color: 'var(--text-primary)' }}>
+              <label className="text-xs font-bold uppercase tracking-wider block mb-1.5" style={{ color: 'var(--text-primary)' }}>
                 Título da Tarefa *
               </label>
               <input
@@ -131,10 +131,10 @@ export const NovaTarefaModal: React.FC<NovaTarefaModalProps> = ({ open, onClose,
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider block mb-1" style={{ color: 'var(--text-primary)' }}>
-                  Setor
+                <label className="text-xs font-bold uppercase tracking-wider block mb-1.5" style={{ color: 'var(--text-primary)' }}>
+                  Setor ({SETORES_OPERACOES.length} Disponíveis) *
                 </label>
                 <select
                   value={setorId}
@@ -150,7 +150,7 @@ export const NovaTarefaModal: React.FC<NovaTarefaModalProps> = ({ open, onClose,
               </div>
 
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider block mb-1" style={{ color: 'var(--text-primary)' }}>
+                <label className="text-xs font-bold uppercase tracking-wider block mb-1.5" style={{ color: 'var(--text-primary)' }}>
                   Coluna / Status
                 </label>
                 <select
@@ -166,38 +166,51 @@ export const NovaTarefaModal: React.FC<NovaTarefaModalProps> = ({ open, onClose,
               </div>
             </div>
 
-            {/* SELETOR INTERATIVO DE COLABORADOR */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider block mb-1 flex items-center justify-between" style={{ color: 'var(--text-primary)' }}>
-                <span>Clique para Selecionar o Membro Responsável *</span>
-                {selectedUser && (
-                  <span className="text-[10px] font-semibold text-[#5B50E5]">
-                    {selectedUser.comoQuerSerChamado || selectedUser.nickname || selectedUser.nome}
-                  </span>
-                )}
+            {/* SELETOR INTERATIVO DE COLABORADOR POR CLIQUE */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider block flex items-center justify-between" style={{ color: 'var(--text-primary)' }}>
+                <span className="flex items-center gap-1.5">
+                  <UserIcon className="w-3.5 h-3.5 text-[#5B50E5]" />
+                  Clique para Selecionar o Membro Responsável *
+                </span>
+                <span className="text-[11px] font-extrabold text-[#5B50E5]">
+                  {usersList.length} cadastrado(s)
+                </span>
               </label>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-52 overflow-y-auto pr-1">
                 {usersList.map((u) => {
                   const isSelected = selectedUser?.id === u.id;
-                  const name = u.comoQuerSerChamado || u.nickname || u.nome;
+                  const displayName = u.comoQuerSerChamado || u.nickname || u.nome;
+                  const sectorsText = u.setoresNomes?.join(", ") || u.setorNome;
+
                   return (
                     <div
                       key={u.id}
                       onClick={() => setSelectedUser(u)}
-                      className="p-2.5 rounded-xl border cursor-pointer transition-all flex items-center justify-between gap-2"
+                      className="p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between gap-3 group"
                       style={{
                         backgroundColor: isSelected ? 'var(--brand-light)' : 'var(--surface-alt)',
                         borderColor: isSelected ? '#5B50E5' : 'var(--border)',
                       }}
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <img src={u.avatarUrl} alt={name} className="w-7 h-7 rounded-full object-cover shrink-0" />
-                        <span className="text-xs font-bold truncate" style={{ color: isSelected ? '#5B50E5' : 'var(--text-primary)' }}>
-                          {name}
-                        </span>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <img src={u.avatarUrl} alt={displayName} className="w-9 h-9 rounded-full object-cover shrink-0" style={{ border: '1.5px solid var(--border)' }} />
+                        <div className="min-w-0">
+                          <span className="text-xs font-extrabold block truncate" style={{ color: isSelected ? '#5B50E5' : 'var(--text-primary)' }}>
+                            {displayName}
+                          </span>
+                          <span className="text-[10px] block truncate" style={{ color: 'var(--text-secondary)' }}>
+                            {u.email}
+                          </span>
+                        </div>
                       </div>
-                      {isSelected && <CheckCircle2 className="w-4 h-4 text-[#5B50E5] shrink-0" />}
+
+                      <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                        isSelected ? "bg-[#5B50E5] border-[#5B50E5] text-white" : "border-[#9CA3AF]"
+                      }`}>
+                        {isSelected && <CheckCircle2 className="w-3.5 h-3.5" />}
+                      </div>
                     </div>
                   );
                 })}
@@ -205,7 +218,7 @@ export const NovaTarefaModal: React.FC<NovaTarefaModalProps> = ({ open, onClose,
             </div>
 
             <div>
-              <label className="text-xs font-bold uppercase tracking-wider block mb-1" style={{ color: 'var(--text-primary)' }}>
+              <label className="text-xs font-bold uppercase tracking-wider block mb-1.5" style={{ color: 'var(--text-primary)' }}>
                 Data de Entrega
               </label>
               <input
@@ -216,17 +229,17 @@ export const NovaTarefaModal: React.FC<NovaTarefaModalProps> = ({ open, onClose,
               />
             </div>
 
-            <div className="pt-3 flex justify-end gap-2">
+            <div className="pt-3 flex justify-end gap-2" style={{ borderTop: '1px solid var(--border)' }}>
               <button
                 type="button"
                 onClick={onClose}
-                className="coursue-btn-secondary text-xs py-2 px-5"
+                className="coursue-btn-secondary text-xs py-2.5 px-5"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="coursue-btn-primary text-xs py-2.5 px-6 shadow-md shadow-[#5B50E5]/20 flex items-center gap-2"
+                className="coursue-btn-primary text-xs py-2.5 px-6 shadow-lg shadow-[#5B50E5]/25 flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" /> Criar Tarefa
               </button>
