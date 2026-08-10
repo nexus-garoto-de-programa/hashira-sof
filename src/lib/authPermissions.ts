@@ -19,6 +19,7 @@ export interface UserAccount {
   email: string;
   papel: "colaborador" | "administrador";
   setorNome: string;
+  setoresNomes?: string[];
   avatarUrl: string;
   permissoes: UserPermissions;
 }
@@ -52,6 +53,7 @@ export const USERS_SEED: UserAccount[] = [
     email: "mhvzbusiness@gmail.com",
     papel: "administrador",
     setorNome: "Gestão Geral",
+    setoresNomes: ["Gestão Geral"],
     avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
     permissoes: ADMIN_PERMISSIONS,
   },
@@ -61,6 +63,7 @@ export const USERS_SEED: UserAccount[] = [
     email: "matheus@hashira.com",
     papel: "colaborador",
     setorNome: "Estrutura de Funil",
+    setoresNomes: ["Estrutura de Funil"],
     avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
     permissoes: DEFAULT_COLLABORATOR_PERMISSIONS,
   },
@@ -70,6 +73,7 @@ export const USERS_SEED: UserAccount[] = [
     email: "henrique@hashira.com",
     papel: "colaborador",
     setorNome: "Marketing",
+    setoresNomes: ["Marketing"],
     avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
     permissoes: DEFAULT_COLLABORATOR_PERMISSIONS,
   },
@@ -79,6 +83,7 @@ export const USERS_SEED: UserAccount[] = [
     email: "debora@hashira.com",
     papel: "colaborador",
     setorNome: "Pós-venda, Suporte e Atendimento ao Cliente",
+    setoresNomes: ["Pós-venda, Suporte e Atendimento ao Cliente"],
     avatarUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
     permissoes: DEFAULT_COLLABORATOR_PERMISSIONS,
   },

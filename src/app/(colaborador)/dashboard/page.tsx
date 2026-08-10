@@ -67,11 +67,15 @@ export default function CollaboratorDashboardPage() {
     saveStoredDemandas(novas);
   };
 
-  // Filter demands for this collaborator's sector or assigned user
+  // Filter demands for this collaborator's selected sectors or assigned user
   const userDemandas = useMemo(() => {
-    if (!user.setorNome) return demandas;
+    if (!user) return demandas;
+    const userSectorsList = user.setoresNomes && user.setoresNomes.length > 0
+      ? user.setoresNomes.map((s) => s.toLowerCase().trim())
+      : user.setorNome ? [user.setorNome.toLowerCase().trim()] : [];
+
     return demandas.filter((d) => {
-      const isSetorMatch = d.setorNome.toLowerCase().trim() === user.setorNome.toLowerCase().trim();
+      const isSetorMatch = userSectorsList.includes(d.setorNome.toLowerCase().trim());
       const isUserMatch =
         (d.colaboradorId && d.colaboradorId === user.id) ||
         (d.colaboradorNome && d.colaboradorNome.toLowerCase() === user.nome.toLowerCase());
