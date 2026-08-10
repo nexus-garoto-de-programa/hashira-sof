@@ -130,176 +130,30 @@ export const HASHIRAS_SEED: SetorHashira[] = [
   },
 ];
 
-// Seed Inicial de Demandas
-export const DEMANDAS_SEED: Demanda[] = [
-  {
-    id: "dem-101",
-    titulo: "Implementação da Nova Landing Page de Alta Conversão",
-    descricao:
-      "Criar e publicar nova estrutura de funil responsiva com VSL integrada, provas sociais em carrossel e gatilhos de escassez no checkout.",
-    setorId: "sec-funil",
-    setorNome: "Estrutura de Funil",
-    criadoPor: "Administrador Central",
-    colaboradorId: "usr-01",
-    colaboradorNome: "Matheus Ramos",
-    colaboradorAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-    prazo: "2026-08-10",
-    prioridade: "urgente",
-    status: "em_andamento",
-    progresso: 75,
-    anexos: [
-      {
-        id: "att-101",
-        tipo: "imagem",
-        titulo: "Wireframe Desktop Funil V3",
-        url: "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?w=800&auto=format&fit=crop&q=80",
-      },
-      {
-        id: "att-102",
-        tipo: "link",
-        titulo: "Link do Protótipo no Figma",
-        url: "https://figma.com/file/funil-hashira-v3",
-      },
-    ],
-    historico: [
-      {
-        id: "h-101",
-        usuarioNome: "Administrador Central",
-        acao: "Demanda criada e atribuída a Matheus Ramos",
-        data: "2026-08-05 10:00",
-      },
-      {
-        id: "h-102",
-        usuarioNome: "Matheus Ramos",
-        acao: "Status alterado para Em Andamento",
-        data: "2026-08-05 10:30",
-        comentario: "Ajustando o tempo de carregamento da VSL e scripts de gatilho.",
-      },
-    ],
-    criadoEm: "2026-08-05T10:00:00Z",
-  },
-  {
-    id: "dem-102",
-    titulo: "Campanha Tráfego Pago — Lançamento Turma 5",
-    descricao:
-      "Configurar conjuntos de anúncios no Meta Ads e Google Ads direcionados para público qualificado, com orçamento de escala em Remarketing.",
-    setorId: "sec-marketing",
-    setorNome: "Marketing",
-    criadoPor: "Administrador Central",
-    colaboradorId: "usr-02",
-    colaboradorNome: "Henrique Silva",
-    colaboradorAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
-    prazo: "2026-08-12",
-    prioridade: "alta",
-    status: "pendente",
-    progresso: 15,
-    anexos: [
-      {
-        id: "att-103",
-        tipo: "imagem",
-        titulo: "Planilha de Orçamento Tráfego",
-        url: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&auto=format&fit=crop&q=80",
-      },
-    ],
-    historico: [
-      {
-        id: "h-103",
-        usuarioNome: "Administrador Central",
-        acao: "Demanda publicada",
-        data: "2026-08-06 11:00",
-      },
-    ],
-    criadoEm: "2026-08-06T11:00:00Z",
-  },
-  {
-    id: "dem-103",
-    titulo: "Automação do Atendimento via WhatsApp e Z-API",
-    descricao:
-      "Integrar a plataforma de suporte com a Z-API para envio de mensagens automáticas de confirmação de pedido e código de rastreio.",
-    setorId: "sec-posvenda",
-    setorNome: "Pós-venda, Suporte e Atendimento ao Cliente",
-    criadoPor: "Administrador Central",
-    colaboradorId: "usr-03",
-    colaboradorNome: "Debora Santos",
-    colaboradorAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
-    prazo: "2026-08-08",
-    prioridade: "urgente",
-    status: "concluida",
-    progresso: 100,
-    anexos: [],
-    historico: [
-      {
-        id: "h-104",
-        usuarioNome: "Debora Santos",
-        acao: "Demanda concluída com sucesso",
-        data: "2026-08-07 14:00",
-        comentario: "Webhooks testados e funcionando com 100% de taxa de entrega.",
-      },
-    ],
-    criadoEm: "2026-08-04T09:00:00Z",
-  },
-  {
-    id: "dem-104",
-    titulo: "Reformulação da Área de Membros dos Alunos",
-    descricao:
-      "Atualizar módulos de vídeo na área de membros, adicionar campo de anotações e sistema de progresso gamificado.",
-    setorId: "sec-produtos",
-    setorNome: "Produtos",
-    criadoPor: "Administrador Central",
-    colaboradorId: "usr-04",
-    colaboradorNome: "Guardião",
-    colaboradorAvatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
-    prazo: "2026-08-14",
-    prioridade: "media",
-    status: "em_andamento",
-    progresso: 40,
-    anexos: [],
-    historico: [],
-    criadoEm: "2026-08-03T15:00:00Z",
-  },
-  {
-    id: "dem-105",
-    titulo: "Organização dos Canais VIP e Permissões no Discord",
-    descricao:
-      "Reorganizar cargos automáticos de alunos VIP e implementar bot de boas-vindas com verificação por token.",
-    setorId: "sec-discord",
-    setorNome: "Discord",
-    criadoPor: "Administrador Central",
-    colaboradorId: "usr-04",
-    colaboradorNome: "Guardião",
-    colaboradorAvatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
-    prazo: "2026-08-06",
-    prioridade: "alta",
-    status: "atrasada",
-    progresso: 60,
-    anexos: [],
-    historico: [
-      {
-        id: "h-105",
-        usuarioNome: "Guardião",
-        acao: "Atrasada devido a atualização de API do Discord Bot",
-        data: "2026-08-06 18:00",
-      },
-    ],
-    criadoEm: "2026-08-02T12:00:00Z",
-  },
-];
+// Seed Inicial de Demandas Zerada por solicitação do usuário
+export const DEMANDAS_SEED: Demanda[] = [];
 
-// Helper LocalStorage persistence
-const STORAGE_KEY_DEMANDAS = "hashira_cascade_demandas_v2";
-const STORAGE_KEY_SETORES = "hashira_cascade_setores_v2";
-const STORAGE_KEY_USUARIOS = "hashira_cascade_usuarios_v2";
+const STORAGE_KEY_DEMANDAS = "hashira_cascade_demandas_v3";
+const STORAGE_KEY_SETORES = "hashira_cascade_setores_v3";
+const STORAGE_KEY_USUARIOS = "hashira_cascade_usuarios_v3";
+const STORAGE_CLEARED_FLAG = "hashira_cascade_demandas_cleared_v3";
 
 export function getStoredDemandas(): Demanda[] {
-  if (typeof window === "undefined") return DEMANDAS_SEED;
+  if (typeof window === "undefined") return [];
   try {
+    const isCleared = localStorage.getItem(STORAGE_CLEARED_FLAG);
+    if (!isCleared) {
+      localStorage.setItem(STORAGE_KEY_DEMANDAS, JSON.stringify([]));
+      localStorage.setItem(STORAGE_CLEARED_FLAG, "true");
+      return [];
+    }
+
     const raw = localStorage.getItem(STORAGE_KEY_DEMANDAS);
     if (raw) return JSON.parse(raw);
   } catch (e) {
     console.error("Erro ao ler demandas", e);
   }
-  localStorage.setItem(STORAGE_KEY_DEMANDAS, JSON.stringify(DEMANDAS_SEED));
-  return DEMANDAS_SEED;
+  return [];
 }
 
 export function saveStoredDemandas(demandas: Demanda[]) {

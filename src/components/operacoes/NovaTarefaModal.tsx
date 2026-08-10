@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Sparkles } from "lucide-react";
-import { OperacoesTarefa, SETORES_OPERACOES, TEAM_MEMBERS, ColumnStatus } from "@/lib/operacoesData";
+import { X, Plus, Sparkles, CheckCircle2 } from "lucide-react";
+import { OperacoesTarefa, SETORES_OPERACOES, ColumnStatus, TeamMember } from "@/lib/operacoesData";
+import { getStoredUsers, UserAccount } from "@/lib/authPermissions";
 import { toast } from "sonner";
 
 interface NovaTarefaModalProps {
@@ -18,8 +19,19 @@ export const NovaTarefaModal: React.FC<NovaTarefaModalProps> = ({ open, onClose,
   const [titulo, setTitulo] = useState("");
   const [setorId, setSetorId] = useState(SETORES_OPERACOES[1].id); // Design
   const [status, setStatus] = useState<ColumnStatus>("nao_iniciado");
-  const [membroId, setMembroId] = useState(TEAM_MEMBERS[0].id);
+  
+  const [usersList, setUsersList] = useState<UserAccount[]>([]);
+  const [selectedUser, setSelectedUser] = useState<UserAccount | null>(null);
+  
   const [prazo, setPrazo] = useState(() => new Date().toISOString().split("T")[0]);
+
+  useEffect(() => {
+    const users = getStoredUsers();
+    setUsersList(users);
+    if (users.length > 0) {
+      setSelectedUser(users[0]);
+    }
+  }, [open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,8 +40,27 @@ export const NovaTarefaModal: React.FC<NovaTarefaModalProps> = ({ open, onClose,
       return;
     }
 
+    if (!selectedUser) {
+      toast.error("Selecione um membro para designar a tarefa");
+      return;
+    }
+
     const setorObj = SETORES_OPERACOES.find((s) => s.id === setorId) || SETORES_OPERACOES[1];
-    const membroObj = TEAM_MEMBERS.find((m) => m.id === membroId) || TEAM_MEMBERS[0];
+    const userDisplayName = selectedUser.comoQuerSerChamado || selectedUser.nickname || selectedUser.nome;
+    const initials = userDisplayName
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .substring(0, 2)
+      .toUpperCase();
+
+    const membroObj: TeamMember = {
+      id: selectedUser.id,
+      name: userDisplayName,
+      initials: initials || "US",
+      color: "#5B50E5",
+      avatarBg: "#5B50E5",
+    };
 
     const nova: OperacoesTarefa = {
       id: "t-" + Date.now(),
@@ -49,7 +80,7 @@ export const NovaTarefaModal: React.FC<NovaTarefaModalProps> = ({ open, onClose,
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -135,35 +166,54 @@ export const NovaTarefaModal: React.FC<NovaTarefaModalProps> = ({ open, onClose,
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wider block mb-1" style={{ color: 'var(--text-primary)' }}>
-                  Membro Designado
-                </label>
-                <select
-                  value={membroId}
-                  onChange={(e) => setMembroId(e.target.value)}
-                  className="coursue-input text-xs cursor-pointer"
-                >
-                  {TEAM_MEMBERS.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.initials} - {m.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* SELETOR INTERATIVO DE COLABORADOR */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider block mb-1 flex items-center justify-between" style={{ color: 'var(--text-primary)' }}>
+                <span>Clique para Selecionar o Membro Responsável *</span>
+                {selectedUser && (
+                  <span className="text-[10px] font-semibold text-[#5B50E5]">
+                    {selectedUser.comoQuerSerChamado || selectedUser.nickname || selectedUser.nome}
+                  </span>
+                )}
+              </label>
 
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wider block mb-1" style={{ color: 'var(--text-primary)' }}>
-                  Data de Entrega
-                </label>
-                <input
-                  type="date"
-                  value={prazo}
-                  onChange={(e) => setPrazo(e.target.value)}
-                  className="coursue-input text-xs cursor-pointer"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1">
+                {usersList.map((u) => {
+                  const isSelected = selectedUser?.id === u.id;
+                  const name = u.comoQuerSerChamado || u.nickname || u.nome;
+                  return (
+                    <div
+                      key={u.id}
+                      onClick={() => setSelectedUser(u)}
+                      className="p-2.5 rounded-xl border cursor-pointer transition-all flex items-center justify-between gap-2"
+                      style={{
+                        backgroundColor: isSelected ? 'var(--brand-light)' : 'var(--surface-alt)',
+                        borderColor: isSelected ? '#5B50E5' : 'var(--border)',
+                      }}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <img src={u.avatarUrl} alt={name} className="w-7 h-7 rounded-full object-cover shrink-0" />
+                        <span className="text-xs font-bold truncate" style={{ color: isSelected ? '#5B50E5' : 'var(--text-primary)' }}>
+                          {name}
+                        </span>
+                      </div>
+                      {isSelected && <CheckCircle2 className="w-4 h-4 text-[#5B50E5] shrink-0" />}
+                    </div>
+                  );
+                })}
               </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider block mb-1" style={{ color: 'var(--text-primary)' }}>
+                Data de Entrega
+              </label>
+              <input
+                type="date"
+                value={prazo}
+                onChange={(e) => setPrazo(e.target.value)}
+                className="coursue-input text-xs cursor-pointer"
+              />
             </div>
 
             <div className="pt-3 flex justify-end gap-2">

@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Trash2, Paperclip, Sparkles } from "lucide-react";
+import { X, Plus, Trash2, Paperclip, Sparkles, CheckCircle2, User as UserIcon } from "lucide-react";
 import { Demanda, Prioridade, HASHIRAS_SEED, Anexo } from "@/lib/demands";
+import { getStoredUsers, UserAccount } from "@/lib/authPermissions";
 import { toast } from "sonner";
 
 interface CreateDemandModalProps {
@@ -22,7 +23,11 @@ export const CreateDemandModal: React.FC<CreateDemandModalProps> = ({
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
   const [setorId, setSetorId] = useState(HASHIRAS_SEED[0].id);
-  const [colaboradorNome, setColaboradorNome] = useState("Matheus Ramos");
+
+  // Lista dinâmica de colaboradores registrados
+  const [availableUsers, setAvailableUsers] = useState<UserAccount[]>([]);
+  const [selectedUser, setSelectedUser] = useState<UserAccount | null>(null);
+
   const [prazo, setPrazo] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 5);
@@ -34,6 +39,14 @@ export const CreateDemandModal: React.FC<CreateDemandModalProps> = ({
   const [anexoTitulo, setAnexoTitulo] = useState("");
   const [anexoUrl, setAnexoUrl] = useState("");
   const [anexoTipo, setAnexoTipo] = useState<"imagem" | "video" | "link">("link");
+
+  useEffect(() => {
+    const users = getStoredUsers();
+    setAvailableUsers(users);
+    if (users.length > 0) {
+      setSelectedUser(users[0]);
+    }
+  }, [open]);
 
   const handleAddAnexo = () => {
     if (!anexoTitulo.trim() || !anexoUrl.trim()) {
@@ -66,7 +79,13 @@ export const CreateDemandModal: React.FC<CreateDemandModalProps> = ({
       return;
     }
 
+    if (!selectedUser) {
+      toast.error("Selecione um colaborador na lista para designar a demanda");
+      return;
+    }
+
     const setorObj = HASHIRAS_SEED.find((s) => s.id === setorId) || HASHIRAS_SEED[0];
+    const colabNomeFinal = selectedUser.comoQuerSerChamado || selectedUser.nickname || selectedUser.nome;
 
     onSave({
       titulo: titulo.trim(),
@@ -74,10 +93,9 @@ export const CreateDemandModal: React.FC<CreateDemandModalProps> = ({
       setorId: setorObj.id,
       setorNome: setorObj.nome,
       criadoPor: "Administrador Central",
-      colaboradorId: "usr-01",
-      colaboradorNome: colaboradorNome.trim() || "Matheus Ramos",
-      colaboradorAvatar:
-        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+      colaboradorId: selectedUser.id,
+      colaboradorNome: colabNomeFinal,
+      colaboradorAvatar: selectedUser.avatarUrl,
       prazo,
       prioridade,
       status: statusInicial,
@@ -87,13 +105,13 @@ export const CreateDemandModal: React.FC<CreateDemandModalProps> = ({
         {
           id: "h-" + Date.now(),
           usuarioNome: "Administrador Central",
-          acao: "Demanda criada e publicada no painel",
+          acao: `Demanda criada e atribuída a ${colabNomeFinal}`,
           data: new Date().toISOString().slice(0, 16).replace("T", " "),
         },
       ],
     });
 
-    toast.success("Nova demanda cadastrada com sucesso!");
+    toast.success(`Nova demanda atribuída a ${colabNomeFinal} cadastrada com sucesso!`);
     onClose();
   };
 
@@ -129,7 +147,7 @@ export const CreateDemandModal: React.FC<CreateDemandModalProps> = ({
                   Criar Nova Demanda
                 </h2>
                 <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                  Defina o departamento Hashira, prazo e anexos da entrega
+                  Selecione o colaborador responsável, departamento e prazo da entrega
                 </p>
               </div>
             </div>
@@ -144,6 +162,8 @@ export const CreateDemandModal: React.FC<CreateDemandModalProps> = ({
 
           {/* Form */}
           <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+            
+            {/* Título */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold uppercase tracking-wider block" style={{ color: 'var(--text-primary)' }}>
                 Título da Demanda *
@@ -155,6 +175,64 @@ export const CreateDemandModal: React.FC<CreateDemandModalProps> = ({
                 placeholder="Ex: Implementar fluxo de checkout rápido com Pix"
                 className="coursue-input text-xs"
               />
+            </div>
+
+            {/* SELETOR INTERATIVO POR CLIQUE: Designar Colaborador */}
+            <div className="space-y-2 pt-1">
+              <label className="text-xs font-bold uppercase tracking-wider block flex items-center justify-between" style={{ color: 'var(--text-primary)' }}>
+                <span className="flex items-center gap-2">
+                  <UserIcon className="w-4 h-4 text-[#5B50E5]" />
+                  Clique para Selecionar o Colaborador Responsável *
+                </span>
+                {selectedUser && (
+                  <span className="text-[11px] font-semibold text-[#5B50E5]">
+                    Selecionado: <strong>{selectedUser.comoQuerSerChamado || selectedUser.nickname || selectedUser.nome}</strong>
+                  </span>
+                )}
+              </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto pr-1">
+                {availableUsers.map((u) => {
+                  const isSelected = selectedUser?.id === u.id;
+                  const displayName = u.comoQuerSerChamado || u.nickname || u.nome;
+                  const userSectors = u.setoresNomes?.join(", ") || u.setorNome;
+
+                  return (
+                    <div
+                      key={u.id}
+                      onClick={() => setSelectedUser(u)}
+                      className="p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between gap-3 group"
+                      style={{
+                        backgroundColor: isSelected ? 'var(--brand-light)' : 'var(--surface-alt)',
+                        borderColor: isSelected ? '#5B50E5' : 'var(--border)',
+                      }}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <img
+                          src={u.avatarUrl}
+                          alt={displayName}
+                          className="w-10 h-10 rounded-full object-cover shrink-0"
+                          style={{ border: '2px solid var(--border)' }}
+                        />
+                        <div className="min-w-0">
+                          <span className="text-xs font-extrabold block truncate" style={{ color: isSelected ? '#5B50E5' : 'var(--text-primary)' }}>
+                            {displayName}
+                          </span>
+                          <span className="text-[10px] block truncate" style={{ color: 'var(--text-secondary)' }}>
+                            {userSectors}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                        isSelected ? "bg-[#5B50E5] border-[#5B50E5] text-white" : "border-[#9CA3AF]"
+                      }`}>
+                        {isSelected && <CheckCircle2 className="w-3.5 h-3.5" />}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Setor e Prioridade Grid */}
@@ -193,32 +271,17 @@ export const CreateDemandModal: React.FC<CreateDemandModalProps> = ({
               </div>
             </div>
 
-            {/* Prazo e Colaborador Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider block" style={{ color: 'var(--text-primary)' }}>
-                  Prazo Limite (Entrega)
-                </label>
-                <input
-                  type="date"
-                  value={prazo}
-                  onChange={(e) => setPrazo(e.target.value)}
-                  className="coursue-input text-xs cursor-pointer"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider block" style={{ color: 'var(--text-primary)' }}>
-                  Designar Colaborador
-                </label>
-                <input
-                  type="text"
-                  value={colaboradorNome}
-                  onChange={(e) => setColaboradorNome(e.target.value)}
-                  placeholder="Nome do colaborador"
-                  className="coursue-input text-xs"
-                />
-              </div>
+            {/* Prazo */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider block" style={{ color: 'var(--text-primary)' }}>
+                Prazo Limite (Entrega)
+              </label>
+              <input
+                type="date"
+                value={prazo}
+                onChange={(e) => setPrazo(e.target.value)}
+                className="coursue-input text-xs cursor-pointer"
+              />
             </div>
 
             {/* Descricao */}
@@ -229,7 +292,7 @@ export const CreateDemandModal: React.FC<CreateDemandModalProps> = ({
               <textarea
                 value={descricao}
                 onChange={(e) => setDescricao(e.target.value)}
-                rows={4}
+                rows={3}
                 placeholder="Explique o objetivo, especificações técnicas e requisitos da demanda…"
                 className="w-full rounded-2xl p-4 text-xs outline-none transition-all"
                 style={{ backgroundColor: 'var(--surface-alt)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
