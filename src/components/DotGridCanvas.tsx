@@ -11,9 +11,9 @@ interface DotGridProps {
 }
 
 export const DotGridCanvas: React.FC<DotGridProps> = ({
-  gridGap = 32,
-  baseRadius = 1.8,
-  activeRadius = 4.5,
+  gridGap = 16,
+  baseRadius = 0.9,
+  activeRadius = 2.25,
   interactionDistance = 150,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
