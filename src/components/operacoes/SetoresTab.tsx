@@ -57,13 +57,13 @@ export const SetoresTab: React.FC<SetoresTabProps> = ({
   const concluidas = tarefas.filter((t) => t.status === "concluido").length;
   const pendentes = tarefas.filter((t) => t.status === "em_andamento" || t.status === "revisao").length;
   const naoIniciadas = tarefas.filter((t) => t.status === "nao_iniciado").length;
-  const totalTarefas = tarefas.length || 26;
+  const totalTarefas = tarefas.length;
 
   // Donut chart dataset
   const donutData = [
-    { name: "Concluídas", value: concluidas || 12, color: "#16A34A" },
-    { name: "Pendentes", value: pendentes || 9, color: "#D97706" },
-    { name: "Não iniciadas", value: naoIniciadas || 5, color: "#9CA3AF" },
+    { name: "Concluídas", value: concluidas, color: "#16A34A" },
+    { name: "Pendentes", value: pendentes, color: "#D97706" },
+    { name: "Não iniciadas", value: naoIniciadas, color: "#9CA3AF" },
   ];
 
   // Stacked Bar dataset by sector
@@ -71,9 +71,9 @@ export const SetoresTab: React.FC<SetoresTabProps> = ({
     const totalSetor = tarefas.filter((t) => t.setorId === setor.id);
     return {
       name: setor.nome,
-      Concluidas: totalSetor.filter((t) => t.status === "concluido").length || setor.concluidas,
-      Pendentes: totalSetor.filter((t) => t.status === "em_andamento" || t.status === "revisao").length || setor.pendentes,
-      NaoIniciadas: totalSetor.filter((t) => t.status === "nao_iniciado").length || (setor.totalTarefas - setor.concluidas - setor.pendentes),
+      Concluidas: totalSetor.filter((t) => t.status === "concluido").length,
+      Pendentes: totalSetor.filter((t) => t.status === "em_andamento" || t.status === "revisao").length,
+      NaoIniciadas: totalSetor.filter((t) => t.status === "nao_iniciado").length,
     };
   });
 
@@ -94,8 +94,8 @@ export const SetoresTab: React.FC<SetoresTabProps> = ({
       {/* Cards Grid de Setores */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {setores.map((setor) => {
-          const countTotal = tarefas.filter((t) => t.setorId === setor.id).length || setor.totalTarefas;
-          const countConc = tarefas.filter((t) => t.setorId === setor.id && t.status === "concluido").length || setor.concluidas;
+          const countTotal = tarefas.filter((t) => t.setorId === setor.id).length;
+          const countConc = tarefas.filter((t) => t.setorId === setor.id && t.status === "concluido").length;
           const countPend = countTotal - countConc;
 
           return (
@@ -192,7 +192,7 @@ export const SetoresTab: React.FC<SetoresTabProps> = ({
           </span>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-black text-emerald-600 font-['Plus_Jakarta_Sans']">
-              {concluidas || 12}
+              {concluidas}
             </span>
             <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>de {totalTarefas} no total</span>
           </div>
@@ -204,7 +204,7 @@ export const SetoresTab: React.FC<SetoresTabProps> = ({
           </span>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-black text-amber-600 font-['Plus_Jakarta_Sans']">
-              {pendentes || 9}
+              {pendentes}
             </span>
             <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>de {totalTarefas} no total</span>
           </div>
@@ -216,7 +216,7 @@ export const SetoresTab: React.FC<SetoresTabProps> = ({
           </span>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-black font-['Plus_Jakarta_Sans']" style={{ color: 'var(--text-secondary)' }}>
-              {naoIniciadas || 5}
+              {naoIniciadas}
             </span>
             <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>de {totalTarefas} no total</span>
           </div>
