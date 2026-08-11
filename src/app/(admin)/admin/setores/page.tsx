@@ -4,13 +4,14 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Layers } from "lucide-react";
 import { HASHIRAS_SEED, SetorHashira, getStoredSetores, saveStoredSetores } from "@/lib/demands";
-import { getActiveUser } from "@/lib/authPermissions";
+import { getActiveUser, getStoredUsers, UserAccount } from "@/lib/authPermissions";
 import { AppSidebar } from "@/components/AppSidebar";
 import { toast } from "sonner";
 
 export default function AdminSetoresPage() {
   const router = useRouter();
   const [setores, setSetores] = useState<SetorHashira[]>([]);
+  const [users, setUsers] = useState<UserAccount[]>([]);
   const [userChecked, setUserChecked] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [nome, setNome] = useState("");
@@ -25,6 +26,7 @@ export default function AdminSetoresPage() {
     }
     setUserChecked(true);
     setSetores(getStoredSetores());
+    setUsers(getStoredUsers());
   }, [router]);
 
   if (!userChecked) return null;
@@ -82,44 +84,48 @@ export default function AdminSetoresPage() {
 
           <button
             onClick={() => setShowModal(true)}
-            className="coursue-btn-primary py-2.5 px-5 text-xs shadow-lg shadow-[#5B50E5]/20"
+            className="coursue-btn-primary py-2.5 px-5 text-xs shadow-lg shadow-[#5B50E5]/20 flex items-center gap-2"
           >
             <Plus className="w-4 h-4" /> Novo Setor
           </button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {setores.map((s) => (
-            <div
-              key={s.id}
-              className="coursue-card p-6 rounded-[24px] shadow-sm flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span
-                    className="text-xs font-extrabold uppercase tracking-wider px-3 py-1 rounded-lg"
-                    style={{ background: s.badgeBg, color: s.badgeText }}
-                  >
-                    {s.nome}
-                  </span>
-                  <span className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>/{s.slug}</span>
-                </div>
-                
-                {s.membrosReferencia && s.membrosReferencia.length > 0 && (
-                  <div className="mb-3 text-[11px] font-semibold text-[#5B50E5]">
-                    Membros: {s.membrosReferencia.join(", ")}
-                  </div>
-                )}
+          {setores.map((s) => {
+            const realMembers = users
+              .filter((u) => u.setorNome === s.nome || u.setoresNomes?.includes(s.nome))
+              .map((u) => u.comoQuerSerChamado || u.nickname || u.nome);
 
-                <p className="text-xs leading-relaxed mb-4" style={{ color: 'var(--text-secondary)' }}>{s.descricao}</p>
-              </div>
+            return (
+              <div
+                key={s.id}
+                className="coursue-card p-6 rounded-[24px] shadow-sm flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span
+                      className="text-xs font-extrabold uppercase tracking-wider px-3 py-1 rounded-lg"
+                      style={{ background: s.badgeBg, color: s.badgeText }}
+                    >
+                      {s.nome}
+                    </span>
+                    <span className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>/{s.slug}</span>
+                  </div>
+                  
+                  {realMembers.length > 0 && (
+                    <div className="mb-3 text-[11px] font-semibold text-[#5B50E5]">
+                      Membros Cadastrados: {realMembers.join(", ")}
+                    </div>
+                  )}
+
+                  <p className="text-xs leading-relaxed mb-4" style={{ color: 'var(--text-secondary)' }}>{s.descricao}</p>
+                </div>
 
               <div className="pt-4 flex items-center justify-between" style={{ borderTop: '1px solid var(--border)' }}>
                 <span className="text-[11px] font-semibold text-emerald-600">Ativo no Cadastro</span>
                 <button
                   onClick={() => handleDeleteSetor(s.id)}
                   className="p-2 rounded-xl text-rose-500 transition-colors"
-                  style={{ }}
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--rose-hover-bg)'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   title="Excluir Setor"
@@ -128,8 +134,9 @@ export default function AdminSetoresPage() {
                 </button>
               </div>
             </div>
-          ))}
-        </div>
+          );
+        })}
+      </div>
 
         {/* Modal Novo Setor */}
         {showModal && (
