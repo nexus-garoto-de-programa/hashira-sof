@@ -98,9 +98,106 @@ export const USERS_SEED: UserAccount[] = [
   },
 ];
 
+import { supabase } from "@/lib/supabase";
+
 const STORAGE_KEY_USERS = "central_hashira_users_v2";
 const STORAGE_KEY_ACTIVE_USER = "central_hashira_active_user_v2";
 const STORAGE_KEY_DELETED_USERS = "central_hashira_deleted_users_v2";
+
+export function mapSupabaseRowToUserAccount(row: any): UserAccount {
+  return normalizeUserAccount({
+    id: row.id,
+    nome: row.nome,
+    nickname: row.nickname,
+    comoQuerSerChamado: row.como_quer_ser_chamado || row.comoQuerSerChamado,
+    cargo: row.cargo,
+    bio: row.bio,
+    email: row.email,
+    senha: row.senha,
+    papel: row.papel,
+    setorNome: row.setor_nome || row.setorNome,
+    setoresNomes: row.setores_nomes || row.setoresNomes,
+    avatarUrl: row.avatar_url || row.avatarUrl,
+    permissoes: row.permissoes,
+  });
+}
+
+export function mapUserAccountToSupabaseRow(user: UserAccount) {
+  const norm = normalizeUserAccount(user);
+  return {
+    id: norm.id,
+    nome: norm.nome,
+    nickname: norm.nickname,
+    como_quer_ser_chamado: norm.comoQuerSerChamado,
+    cargo: norm.cargo,
+    bio: norm.bio,
+    email: norm.email.toLowerCase().trim(),
+    senha: norm.senha,
+    papel: norm.papel,
+    setor_nome: norm.setorNome,
+    setores_nomes: norm.setoresNomes,
+    avatar_url: norm.avatarUrl,
+    permissoes: norm.permissoes,
+  };
+}
+
+export async function fetchUsersFromSupabase(): Promise<UserAccount[]> {
+  try {
+    const { data, error } = await supabase.from("usuarios").select("*");
+    if (error) {
+      console.warn("[SUPABASE WARN] Falha ao ler usuários remotos, usando fallback:", error.message);
+      return getStoredUsers();
+    }
+    if (data && data.length > 0) {
+      const remoteUsers = data.map(mapSupabaseRowToUserAccount);
+      // Salva no localStorage local para renderização instantânea offline/fallback
+      if (typeof window !== "undefined") {
+        try {
+          const map = new Map<string, UserAccount>();
+          USERS_SEED.forEach((u) => map.set(u.email.toLowerCase().trim(), u));
+          remoteUsers.forEach((u) => map.set(u.email.toLowerCase().trim(), u));
+          const merged = Array.from(map.values());
+          localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(merged));
+        } catch (e) {}
+      }
+      return remoteUsers;
+    }
+  } catch (e) {
+    console.error("[SUPABASE ERROR] Exceção ao buscar usuários:", e);
+  }
+  return getStoredUsers();
+}
+
+export async function saveUserToSupabase(user: UserAccount): Promise<boolean> {
+  try {
+    const row = mapUserAccountToSupabaseRow(user);
+    const { error } = await supabase.from("usuarios").upsert(row, { onConflict: "email" });
+    if (error) {
+      console.error("[SUPABASE ERROR] Falha ao salvar usuário no banco remoto:", error.message);
+    }
+  } catch (e) {
+    console.error("[SUPABASE ERROR] Exceção ao salvar usuário no Supabase:", e);
+  }
+  saveStoredUsers([user]);
+  return true;
+}
+
+export async function deleteUserFromSupabase(identifier: string): Promise<boolean> {
+  const cleanIdent = identifier.toLowerCase().trim();
+  try {
+    const { error } = await supabase
+      .from("usuarios")
+      .delete()
+      .or(`id.eq.${cleanIdent},email.eq.${cleanIdent}`);
+    if (error) {
+      console.error("[SUPABASE ERROR] Falha ao deletar usuário remoto:", error.message);
+    }
+  } catch (e) {
+    console.error("[SUPABASE ERROR] Exceção ao deletar usuário remoto:", e);
+  }
+  deleteStoredUser(cleanIdent);
+  return true;
+}
 
 export function getDeletedUsersList(): string[] {
   if (typeof window === "undefined") return [];

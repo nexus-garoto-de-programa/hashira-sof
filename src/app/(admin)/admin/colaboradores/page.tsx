@@ -9,11 +9,15 @@ import {
   getStoredUsers,
   saveStoredUsers,
   deleteStoredUser,
+  fetchUsersFromSupabase,
+  saveUserToSupabase,
+  deleteUserFromSupabase,
   UserAccount,
   DEFAULT_COLLABORATOR_PERMISSIONS,
   ADMIN_PERMISSIONS,
 } from "@/lib/authPermissions";
 import { AppSidebar } from "@/components/AppSidebar";
+import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
 export default function AdminColaboradoresPage() {
@@ -35,16 +39,25 @@ export default function AdminColaboradoresPage() {
     }
     setUserChecked(true);
 
-    const reloadUsers = () => {
-      setUsers(getStoredUsers());
+    const reloadUsers = async () => {
+      const remote = await fetchUsersFromSupabase();
+      setUsers(remote);
     };
 
     reloadUsers();
+
+    const channel = supabase
+      .channel("admin-colaboradores-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "usuarios" }, () => {
+        reloadUsers();
+      })
+      .subscribe();
 
     window.addEventListener("hashira_users_updated", reloadUsers);
     window.addEventListener("storage", reloadUsers);
 
     return () => {
+      supabase.removeChannel(channel);
       window.removeEventListener("hashira_users_updated", reloadUsers);
       window.removeEventListener("storage", reloadUsers);
     };
@@ -59,7 +72,7 @@ export default function AdminColaboradoresPage() {
 
   if (!userChecked) return null;
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nome.trim() || !email.trim()) {
       toast.error("Preencha nome e e-mail");
@@ -105,7 +118,7 @@ export default function AdminColaboradoresPage() {
     };
 
     saveStoredUsuario(novoUsuarioDemandas);
-    saveStoredUsers([novoUser]);
+    await saveUserToSupabase(novoUser);
 
     toast.success(`Colaborador ${displayName} convidado e cadastrado com sucesso!`);
     setNome("");
@@ -113,8 +126,8 @@ export default function AdminColaboradoresPage() {
     setShowModal(false);
   };
 
-  const handleDelete = (id: string) => {
-    deleteStoredUser(id);
+  const handleDelete = async (id: string) => {
+    await deleteUserFromSupabase(id);
     toast.success("Colaborador removido do sistema");
   };
 

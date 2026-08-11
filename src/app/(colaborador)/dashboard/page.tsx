@@ -17,8 +17,11 @@ import {
   StatusDemanda,
   getStoredDemandas,
   saveStoredDemandas,
+  fetchDemandasFromSupabase,
+  saveDemandaToSupabase,
 } from "@/lib/demands";
 import { getActiveUser, UserAccount, USERS_SEED } from "@/lib/authPermissions";
+import { supabase } from "@/lib/supabase";
 import { AppSidebar } from "@/components/AppSidebar";
 import { DemandCard } from "@/components/DemandCard";
 import { DemandDetailModal } from "@/components/DemandDetailModal";
@@ -37,7 +40,7 @@ function getGreeting(): string {
 
 export default function CollaboratorDashboardPage() {
   const router = useRouter();
-  const [demandas, setDemandas] = useState<Demanda[]>(getStoredDemandas);
+  const [demandas, setDemandas] = useState<Demanda[]>([]);
   const [user, setUser] = useState<UserAccount | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -53,21 +56,46 @@ export default function CollaboratorDashboardPage() {
       return;
     }
     setUser(active);
+
+    const reloadDemandas = async () => {
+      const remote = await fetchDemandasFromSupabase();
+      setDemandas(remote);
+    };
+
+    reloadDemandas();
+
+    const channel = supabase
+      .channel("colaborador-dashboard-demandas")
+      .on("postgres_changes", { event: "*", schema: "public", table: "demandas" }, () => {
+        reloadDemandas();
+      })
+      .subscribe();
+
+    window.addEventListener("hashira_demandas_updated", reloadDemandas);
+    window.addEventListener("storage", reloadDemandas);
+
+    return () => {
+      supabase.removeChannel(channel);
+      window.removeEventListener("hashira_demandas_updated", reloadDemandas);
+      window.removeEventListener("storage", reloadDemandas);
+    };
   }, [router]);
 
-  // Filter demands for this collaborator's selected sectors or assigned user (Hook called unconditionally)
+  // Exibe APENAS demandas que foram explicitamente atribuídas a este colaborador (sem tarefas fantasma por setor)
   const userDemandas = useMemo(() => {
-    if (!user) return demandas;
-    const userSectorsList = user.setoresNomes && user.setoresNomes.length > 0
-      ? user.setoresNomes.map((s) => s.toLowerCase().trim())
-      : user.setorNome ? [user.setorNome.toLowerCase().trim()] : [];
+    if (!user) return [];
+
+    const userCleanEmail = user.email ? user.email.toLowerCase().trim() : "";
+    const userCleanName = user.nome ? user.nome.toLowerCase().trim() : "";
 
     return demandas.filter((d) => {
-      const isSetorMatch = userSectorsList.includes(d.setorNome.toLowerCase().trim());
-      const isUserMatch =
-        (d.colaboradorId && d.colaboradorId === user.id) ||
-        (d.colaboradorNome && d.colaboradorNome.toLowerCase() === user.nome?.toLowerCase());
-      return isSetorMatch || isUserMatch;
+      const isIdMatch = Boolean(d.colaboradorId && d.colaboradorId === user.id);
+      const isNameMatch = Boolean(
+        d.colaboradorNome &&
+        (d.colaboradorNome.toLowerCase().trim() === userCleanName ||
+         d.colaboradorNome.toLowerCase().trim() === userCleanEmail)
+      );
+      return isIdMatch || isNameMatch;
     });
   }, [demandas, user]);
 

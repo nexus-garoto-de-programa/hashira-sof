@@ -4,7 +4,8 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, Trash2, Paperclip, Sparkles, CheckCircle2, User as UserIcon } from "lucide-react";
 import { Demanda, Prioridade, HASHIRAS_SEED, Anexo } from "@/lib/demands";
-import { getStoredUsers, UserAccount } from "@/lib/authPermissions";
+import { getStoredUsers, fetchUsersFromSupabase, UserAccount } from "@/lib/authPermissions";
+import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
 interface CreateDemandModalProps {
@@ -41,8 +42,8 @@ export const CreateDemandModal: React.FC<CreateDemandModalProps> = ({
   useEffect(() => {
     if (!open) return;
 
-    const reloadUsers = () => {
-      const users = getStoredUsers();
+    const reloadUsers = async () => {
+      const users = await fetchUsersFromSupabase();
       setAvailableUsers(users);
       if (users.length > 0) {
         setSelectedUser((prev) => (prev && users.some((u) => u.id === prev.id) ? prev : users[0]));
@@ -51,10 +52,18 @@ export const CreateDemandModal: React.FC<CreateDemandModalProps> = ({
 
     reloadUsers();
 
+    const channel = supabase
+      .channel("create-demand-modal-users")
+      .on("postgres_changes", { event: "*", schema: "public", table: "usuarios" }, () => {
+        reloadUsers();
+      })
+      .subscribe();
+
     window.addEventListener("hashira_users_updated", reloadUsers);
     window.addEventListener("storage", reloadUsers);
 
     return () => {
+      supabase.removeChannel(channel);
       window.removeEventListener("hashira_users_updated", reloadUsers);
       window.removeEventListener("storage", reloadUsers);
     };

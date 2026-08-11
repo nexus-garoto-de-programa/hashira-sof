@@ -22,6 +22,7 @@ import { HASHIRAS_SEED, saveStoredUsuario, Usuario } from "@/lib/demands";
 import {
   getStoredUsers,
   saveStoredUsers,
+  saveUserToSupabase,
   setActiveUser,
   DEFAULT_COLLABORATOR_PERMISSIONS,
   UserAccount,
@@ -170,9 +171,9 @@ export default function CadastroPage() {
       permissoes: DEFAULT_COLLABORATOR_PERMISSIONS,
     };
 
-    setTimeout(() => {
+    setTimeout(async () => {
       saveStoredUsuario(novoUsuarioDemandas);
-      saveStoredUsers([novaContaAuth]);
+      await saveUserToSupabase(novaContaAuth);
 
       toast.success(
         `Cadastro concluído com sucesso! Faça seu login para acessar sua conta de colaborador.`

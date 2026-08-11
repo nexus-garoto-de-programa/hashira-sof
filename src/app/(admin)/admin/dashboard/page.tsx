@@ -16,11 +16,15 @@ import {
   Demanda,
   getStoredDemandas,
   saveStoredDemandas,
+  fetchDemandasFromSupabase,
+  saveDemandaToSupabase,
+  deleteDemandaFromSupabase,
   HASHIRAS_SEED,
 } from "@/lib/demands";
 import { AppSidebar } from "@/components/AppSidebar";
 import { DemandDetailModal } from "@/components/DemandDetailModal";
 import { CreateDemandModal } from "@/components/CreateDemandModal";
+import { supabase } from "@/lib/supabase";
 import {
   BarChart,
   Bar,
@@ -36,7 +40,7 @@ import { toast } from "sonner";
 
 export default function AdminDashboardPage() {
   const router = useRouter();
-  const [demandas, setDemandas] = useState<Demanda[]>(getStoredDemandas);
+  const [demandas, setDemandas] = useState<Demanda[]>([]);
   const [setorSelecionado, setSetorSelecionado] = useState<string>("todos");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDemanda, setSelectedDemanda] = useState<Demanda | null>(null);
@@ -55,6 +59,29 @@ export default function AdminDashboardPage() {
       return;
     }
     setUserChecked(true);
+
+    const reloadDemandas = async () => {
+      const remote = await fetchDemandasFromSupabase();
+      setDemandas(remote);
+    };
+
+    reloadDemandas();
+
+    const channel = supabase
+      .channel("admin-dashboard-demandas")
+      .on("postgres_changes", { event: "*", schema: "public", table: "demandas" }, () => {
+        reloadDemandas();
+      })
+      .subscribe();
+
+    window.addEventListener("hashira_demandas_updated", reloadDemandas);
+    window.addEventListener("storage", reloadDemandas);
+
+    return () => {
+      supabase.removeChannel(channel);
+      window.removeEventListener("hashira_demandas_updated", reloadDemandas);
+      window.removeEventListener("storage", reloadDemandas);
+    };
   }, [router]);
 
   const updateDemandas = (novas: Demanda[]) => {
@@ -125,20 +152,20 @@ export default function AdminDashboardPage() {
 
   if (!userChecked) return null;
 
-  const handleDeleteDemanda = (id: string) => {
-    const novas = demandas.filter((d) => d.id !== id);
-    updateDemandas(novas);
+  const handleDeleteDemanda = async (id: string) => {
+    await deleteDemandaFromSupabase(id);
     toast.success("Demanda removida");
   };
 
-  const handleCreateDemanda = (nova: Omit<Demanda, "id" | "criadoEm">) => {
+  const handleCreateDemanda = async (nova: Omit<Demanda, "id" | "criadoEm">) => {
     const id = "dem-" + Date.now();
     const objetoCompleto: Demanda = {
       ...nova,
       id,
       criadoEm: new Date().toISOString(),
     };
-    updateDemandas([objetoCompleto, ...demandas]);
+    await saveDemandaToSupabase(objetoCompleto);
+    toast.success("Demanda criada e atribuída com sucesso!");
   };
 
   return (

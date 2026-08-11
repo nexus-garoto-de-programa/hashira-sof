@@ -138,16 +138,107 @@ const STORAGE_KEY_SETORES = "hashira_cascade_setores_v3";
 const STORAGE_KEY_USUARIOS = "hashira_cascade_usuarios_v3";
 const STORAGE_CLEARED_FLAG = "hashira_cascade_demandas_cleared_v3";
 
+import { supabase } from "@/lib/supabase";
+
+export function mapSupabaseRowToDemanda(row: any): Demanda {
+  return {
+    id: row.id,
+    titulo: row.titulo,
+    descricao: row.descricao || "",
+    setorId: row.setor_id || row.setorId || "sec-funil",
+    setorNome: row.setor_nome || row.setorNome || "Estrutura de Funil",
+    criadoPor: row.criado_por || row.criadoPor || "Administrador",
+    colaboradorId: row.colaborador_id || row.colaboradorId,
+    colaboradorNome: row.colaborador_nome || row.colaboradorNome,
+    colaboradorAvatar: row.colaborador_avatar || row.colaboradorAvatar,
+    prazo: row.prazo || new Date().toISOString().split("T")[0],
+    prioridade: row.prioridade || "media",
+    status: row.status || "pendente",
+    progresso: row.progresso ?? 0,
+    anexos: Array.isArray(row.anexos) ? row.anexos : [],
+    historico: Array.isArray(row.historico) ? row.historico : [],
+    criadoEm: row.criado_em || row.criadoEm || new Date().toISOString(),
+  };
+}
+
+export function mapDemandaToSupabaseRow(d: Demanda) {
+  return {
+    id: d.id,
+    titulo: d.titulo,
+    descricao: d.descricao,
+    setor_id: d.setorId,
+    setor_nome: d.setorNome,
+    criado_por: d.criadoPor,
+    colaborador_id: d.colaboradorId,
+    colaborador_nome: d.colaboradorNome,
+    colaborador_avatar: d.colaboradorAvatar,
+    prazo: d.prazo,
+    prioridade: d.prioridade,
+    status: d.status,
+    progresso: d.progresso,
+    anexos: d.anexos,
+    historico: d.historico,
+  };
+}
+
+export async function fetchDemandasFromSupabase(): Promise<Demanda[]> {
+  try {
+    const { data, error } = await supabase.from("demandas").select("*");
+    if (error) {
+      console.warn("[SUPABASE WARN] Falha ao ler demandas do Supabase, usando localStorage:", error.message);
+      return getStoredDemandas();
+    }
+    if (data) {
+      const demandas = data.map(mapSupabaseRowToDemanda);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(STORAGE_KEY_DEMANDAS, JSON.stringify(demandas));
+        } catch (e) {}
+      }
+      return demandas;
+    }
+  } catch (e) {
+    console.error("[SUPABASE ERROR] Exceção ao buscar demandas:", e);
+  }
+  return getStoredDemandas();
+}
+
+export async function saveDemandaToSupabase(demanda: Demanda): Promise<boolean> {
+  try {
+    const row = mapDemandaToSupabaseRow(demanda);
+    const { error } = await supabase.from("demandas").upsert(row, { onConflict: "id" });
+    if (error) {
+      console.error("[SUPABASE ERROR] Falha ao salvar demanda no Supabase:", error.message);
+    }
+  } catch (e) {
+    console.error("[SUPABASE ERROR] Exceção ao salvar demanda:", e);
+  }
+  const current = getStoredDemandas();
+  const updated = [demanda, ...current.filter((d) => d.id !== demanda.id)];
+  saveStoredDemandas(updated);
+  window.dispatchEvent(new CustomEvent("hashira_demandas_updated"));
+  return true;
+}
+
+export async function deleteDemandaFromSupabase(id: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.from("demandas").delete().eq("id", id);
+    if (error) {
+      console.error("[SUPABASE ERROR] Falha ao deletar demanda no Supabase:", error.message);
+    }
+  } catch (e) {
+    console.error("[SUPABASE ERROR] Exceção ao deletar demanda:", e);
+  }
+  const current = getStoredDemandas();
+  const updated = current.filter((d) => d.id !== id);
+  saveStoredDemandas(updated);
+  window.dispatchEvent(new CustomEvent("hashira_demandas_updated"));
+  return true;
+}
+
 export function getStoredDemandas(): Demanda[] {
   if (typeof window === "undefined") return [];
   try {
-    const isCleared = localStorage.getItem(STORAGE_CLEARED_FLAG);
-    if (!isCleared) {
-      localStorage.setItem(STORAGE_KEY_DEMANDAS, JSON.stringify([]));
-      localStorage.setItem(STORAGE_CLEARED_FLAG, "true");
-      return [];
-    }
-
     const raw = localStorage.getItem(STORAGE_KEY_DEMANDAS);
     if (raw) return JSON.parse(raw);
   } catch (e) {
@@ -160,6 +251,7 @@ export function saveStoredDemandas(demandas: Demanda[]) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(STORAGE_KEY_DEMANDAS, JSON.stringify(demandas));
+    window.dispatchEvent(new CustomEvent("hashira_demandas_updated"));
   } catch (e) {
     console.error("Erro ao salvar demandas", e);
   }

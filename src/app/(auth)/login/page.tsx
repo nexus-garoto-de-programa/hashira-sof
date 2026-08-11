@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff, ShieldCheck, User, Loader2, Sparkles } from "lucide-react";
-import { getStoredUsers, setActiveUser, UserAccount } from "@/lib/authPermissions";
+import { getStoredUsers, fetchUsersFromSupabase, setActiveUser, UserAccount } from "@/lib/authPermissions";
 import { toast } from "sonner";
 
 export default function LoginPage() {
@@ -26,9 +26,9 @@ export default function LoginPage() {
 
     setLoading(true);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       try {
-        const users = getStoredUsers();
+        const users = await fetchUsersFromSupabase();
         const cleanEmail = email.trim().toLowerCase();
 
         // Buscar usuário por e-mail na base salva
