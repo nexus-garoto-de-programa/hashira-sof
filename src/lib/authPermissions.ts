@@ -144,29 +144,74 @@ export function getStoredUsers(): UserAccount[] {
   if (typeof window === "undefined") return USERS_SEED;
   try {
     const raw = localStorage.getItem(STORAGE_KEY_USERS);
+    let list: UserAccount[] = [];
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.map(normalizeUserAccount);
+        list = parsed.map(normalizeUserAccount);
       }
     }
+
+    // Garante fusão com os usuários SEED para que ninguém se perca
+    const map = new Map<string, UserAccount>();
+    USERS_SEED.forEach((u) => map.set(u.email.toLowerCase().trim(), u));
+    list.forEach((u) => map.set(u.email.toLowerCase().trim(), u));
+
+    const merged = Array.from(map.values());
+    if (!raw) {
+      localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(merged));
+    }
+    return merged;
   } catch (e) {
     console.error("Erro ao carregar usuários de auth", e);
   }
-  localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(USERS_SEED));
   return USERS_SEED;
 }
 
 export function saveStoredUsers(users: UserAccount[]) {
   if (typeof window === "undefined") return;
   try {
+    // Busca registros atuais do localStorage para fusão atômica (não sobrescrever dados por race condition)
+    let currentInStore: UserAccount[] = [];
+    const raw = localStorage.getItem(STORAGE_KEY_USERS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        currentInStore = parsed.map(normalizeUserAccount);
+      }
+    }
+
     const map = new Map<string, UserAccount>();
+    USERS_SEED.forEach((u) => map.set(u.email.toLowerCase().trim(), u));
+    currentInStore.forEach((u) => map.set(u.email.toLowerCase().trim(), u));
     users.forEach((u) => {
       const normalized = normalizeUserAccount(u);
       map.set(normalized.email.toLowerCase().trim(), normalized);
     });
+
     const deduplicated = Array.from(map.values());
     localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(deduplicated));
+
+    // Sincroniza também a chave de demandas "hashira_cascade_usuarios_v3"
+    try {
+      const demandasUsuariosFormat = deduplicated.map((u) => ({
+        id: u.id,
+        nome: u.nome,
+        email: u.email,
+        papel: u.papel,
+        setorId: "sec-funil",
+        setorNome: u.setorNome || "Estrutura de Funil",
+        statusConta: "ativo",
+        avatarUrl: u.avatarUrl,
+        criadoEm: new Date().toISOString(),
+      }));
+      localStorage.setItem("hashira_cascade_usuarios_v3", JSON.stringify(demandasUsuariosFormat));
+    } catch (e) {
+      console.error("Erro ao sincronizar hashira_cascade_usuarios_v3", e);
+    }
+
+    // Dispara evento customizado e nativo para atualização em tempo real no front-end
+    window.dispatchEvent(new CustomEvent("hashira_users_updated"));
   } catch (e) {
     console.error("Erro ao salvar usuários de auth", e);
   }

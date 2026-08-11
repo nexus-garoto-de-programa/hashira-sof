@@ -39,13 +39,25 @@ export const CreateDemandModal: React.FC<CreateDemandModalProps> = ({
   const [anexoTipo, setAnexoTipo] = useState<"imagem" | "video" | "link">("link");
 
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+
+    const reloadUsers = () => {
       const users = getStoredUsers();
       setAvailableUsers(users);
       if (users.length > 0) {
-        setSelectedUser((prev) => (prev && users.some(u => u.id === prev.id) ? prev : users[0]));
+        setSelectedUser((prev) => (prev && users.some((u) => u.id === prev.id) ? prev : users[0]));
       }
-    }
+    };
+
+    reloadUsers();
+
+    window.addEventListener("hashira_users_updated", reloadUsers);
+    window.addEventListener("storage", reloadUsers);
+
+    return () => {
+      window.removeEventListener("hashira_users_updated", reloadUsers);
+      window.removeEventListener("storage", reloadUsers);
+    };
   }, [open]);
 
   if (!open) return null;

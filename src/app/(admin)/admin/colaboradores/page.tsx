@@ -33,7 +33,20 @@ export default function AdminColaboradoresPage() {
       return;
     }
     setUserChecked(true);
-    setUsers(getStoredUsers());
+
+    const reloadUsers = () => {
+      setUsers(getStoredUsers());
+    };
+
+    reloadUsers();
+
+    window.addEventListener("hashira_users_updated", reloadUsers);
+    window.addEventListener("storage", reloadUsers);
+
+    return () => {
+      window.removeEventListener("hashira_users_updated", reloadUsers);
+      window.removeEventListener("storage", reloadUsers);
+    };
   }, [router]);
 
   const [nome, setNome] = useState("");

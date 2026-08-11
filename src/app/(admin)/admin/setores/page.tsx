@@ -30,8 +30,21 @@ export default function AdminSetoresPage() {
       return;
     }
     setUserChecked(true);
-    setSetores(getStoredSetores());
-    setUsers(getStoredUsers());
+
+    const reloadData = () => {
+      setSetores(getStoredSetores());
+      setUsers(getStoredUsers());
+    };
+
+    reloadData();
+
+    window.addEventListener("hashira_users_updated", reloadData);
+    window.addEventListener("storage", reloadData);
+
+    return () => {
+      window.removeEventListener("hashira_users_updated", reloadData);
+      window.removeEventListener("storage", reloadData);
+    };
   }, [router]);
 
   if (!userChecked) return null;

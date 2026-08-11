@@ -172,8 +172,7 @@ export default function CadastroPage() {
 
     setTimeout(() => {
       saveStoredUsuario(novoUsuarioDemandas);
-      const updatedUsers = [novaContaAuth, ...currentUsers];
-      saveStoredUsers(updatedUsers);
+      saveStoredUsers([novaContaAuth]);
 
       toast.success(
         `Cadastro concluído com sucesso! Faça seu login para acessar sua conta de colaborador.`

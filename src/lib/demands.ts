@@ -200,11 +200,12 @@ export function getStoredUsuarios(): Usuario[] {
 export function saveStoredUsuario(user: Usuario) {
   if (typeof window === "undefined") return;
   const list = getStoredUsuarios();
-  const index = list.findIndex((u) => u.id === user.id || u.email === user.email);
+  const index = list.findIndex((u) => u.id === user.id || u.email.toLowerCase().trim() === user.email.toLowerCase().trim());
   if (index >= 0) {
     list[index] = user;
   } else {
     list.push(user);
   }
   localStorage.setItem(STORAGE_KEY_USUARIOS, JSON.stringify(list));
+  window.dispatchEvent(new CustomEvent("hashira_users_updated"));
 }

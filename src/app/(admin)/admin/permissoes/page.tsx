@@ -31,6 +31,20 @@ export default function AdminPermissoesPage() {
       return;
     }
     setUserChecked(true);
+
+    const reloadUsers = () => {
+      setUsers(getStoredUsers());
+    };
+
+    reloadUsers();
+
+    window.addEventListener("hashira_users_updated", reloadUsers);
+    window.addEventListener("storage", reloadUsers);
+
+    return () => {
+      window.removeEventListener("hashira_users_updated", reloadUsers);
+      window.removeEventListener("storage", reloadUsers);
+    };
   }, [router]);
 
   if (!userChecked) return null;
