@@ -117,7 +117,11 @@ export default function CentralOperacoesPage() {
   };
 
   const handleSaveNovaTarefa = async (nova: OperacoesTarefa) => {
+    // Atualiza o estado local imediatamente (otimista) sem esperar o Realtime
+    setTarefas((prev) => [nova, ...prev.filter((t) => t.id !== nova.id)]);
     await saveOperacoesTarefaToSupabase(nova);
+    // Navega para a aba de tarefas para mostrar o resultado
+    setActiveTab("tarefas");
   };
 
   const tabs = [
@@ -283,6 +287,7 @@ export default function CentralOperacoesPage() {
           open={showNovaModal}
           onClose={() => setShowNovaModal(false)}
           onSave={handleSaveNovaTarefa}
+          setores={setores}
         />
       </div>
     </div>

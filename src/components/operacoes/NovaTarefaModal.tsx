@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, Sparkles, CheckCircle2, User as UserIcon } from "lucide-react";
-import { OperacoesTarefa, SETORES_OPERACOES, ColumnStatus, TeamMember } from "@/lib/operacoesData";
+import { OperacoesTarefa, OperacoesSetor, SETORES_OPERACOES, ColumnStatus, TeamMember } from "@/lib/operacoesData";
 import { getStoredUsers, fetchUsersFromSupabase, UserAccount } from "@/lib/authPermissions";
 import { toast } from "sonner";
 
@@ -11,11 +11,13 @@ interface NovaTarefaModalProps {
   open: boolean;
   onClose: () => void;
   onSave: (tarefa: OperacoesTarefa) => void;
+  setores?: OperacoesSetor[];
 }
 
-export const NovaTarefaModal: React.FC<NovaTarefaModalProps> = ({ open, onClose, onSave }) => {
+export const NovaTarefaModal: React.FC<NovaTarefaModalProps> = ({ open, onClose, onSave, setores: setoresProp }) => {
+  const setoresDisponiveis = (setoresProp && setoresProp.length > 0) ? setoresProp : SETORES_OPERACOES;
   const [titulo, setTitulo] = useState("");
-  const [setorId, setSetorId] = useState(SETORES_OPERACOES[0].id); // Estrutura de Funil
+  const [setorId, setSetorId] = useState(() => setoresDisponiveis[0]?.id || SETORES_OPERACOES[0].id);
   const [status, setStatus] = useState<ColumnStatus>("nao_iniciado");
   
   const [usersList, setUsersList] = useState<UserAccount[]>([]);
@@ -50,7 +52,7 @@ export const NovaTarefaModal: React.FC<NovaTarefaModalProps> = ({ open, onClose,
       return;
     }
 
-    const setorObj = SETORES_OPERACOES.find((s) => s.id === setorId) || SETORES_OPERACOES[0];
+    const setorObj = setoresDisponiveis.find((s) => s.id === setorId) || setoresDisponiveis[0] || SETORES_OPERACOES[0];
     const userDisplayName = selectedUser.comoQuerSerChamado || selectedUser.nickname || selectedUser.nome;
     const initials = userDisplayName
       .split(" ")
@@ -139,14 +141,14 @@ export const NovaTarefaModal: React.FC<NovaTarefaModalProps> = ({ open, onClose,
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-bold uppercase tracking-wider block mb-1.5" style={{ color: 'var(--text-primary)' }}>
-                  Setor ({SETORES_OPERACOES.length} Disponíveis) *
+                  Setor ({setoresDisponiveis.length} Disponíveis) *
                 </label>
                 <select
                   value={setorId}
                   onChange={(e) => setSetorId(e.target.value)}
                   className="coursue-input text-xs cursor-pointer"
                 >
-                  {SETORES_OPERACOES.map((s) => (
+                  {setoresDisponiveis.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.nome}
                     </option>
