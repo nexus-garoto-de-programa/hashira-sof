@@ -15,6 +15,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { uploadFileToSupabaseStorage } from "@/lib/supabase";
 import { toast } from "sonner";
 
 interface SetoresTabProps {
@@ -34,7 +35,7 @@ export const SetoresTab: React.FC<SetoresTabProps> = ({
 }) => {
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
 
-  const handleFileChange = (setorId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (setorId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -43,15 +44,15 @@ export const SetoresTab: React.FC<SetoresTabProps> = ({
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      if (dataUrl) {
-        onUpdateCoverImage(setorId, dataUrl);
-        toast.success("Imagem de capa atualizada com sucesso!");
-      }
-    };
-    reader.readAsDataURL(file);
+    toast.info("Enviando imagem de capa para o Supabase Storage CDN...");
+
+    const publicUrl = await uploadFileToSupabaseStorage(file, "covers");
+    if (publicUrl) {
+      onUpdateCoverImage(setorId, publicUrl);
+      toast.success("Imagem de capa enviada para o CDN do Supabase com sucesso!");
+    } else {
+      toast.error("Falha ao enviar imagem de capa para o Supabase Storage.");
+    }
   };
 
   const concluidas = tarefas.filter((t) => t.status === "concluido").length;

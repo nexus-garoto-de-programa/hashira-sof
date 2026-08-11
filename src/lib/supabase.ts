@@ -9,3 +9,34 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
   },
 });
+
+export async function uploadFileToSupabaseStorage(
+  file: File,
+  folder: "avatars" | "covers" | "attachments" = "avatars"
+): Promise<string | null> {
+  try {
+    const fileExt = file.name.split(".").pop() || "png";
+    const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+
+    const { data, error } = await supabase.storage
+      .from("hashira-media")
+      .upload(fileName, file, {
+        cacheControl: "3600",
+        upsert: true,
+      });
+
+    if (error) {
+      console.error("[SUPABASE STORAGE ERROR]", error.message);
+      return null;
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from("hashira-media")
+      .getPublicUrl(data.path);
+
+    return publicUrlData.publicUrl;
+  } catch (err) {
+    console.error("[SUPABASE STORAGE EXCEPTION]", err);
+    return null;
+  }
+}

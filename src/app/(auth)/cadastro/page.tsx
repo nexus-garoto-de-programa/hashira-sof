@@ -27,6 +27,7 @@ import {
   DEFAULT_COLLABORATOR_PERMISSIONS,
   UserAccount,
 } from "@/lib/authPermissions";
+import { uploadFileToSupabaseStorage } from "@/lib/supabase";
 import { toast } from "sonner";
 
 const DEFAULT_AVATARS = [
@@ -59,7 +60,7 @@ export default function CadastroPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -68,15 +69,15 @@ export default function CadastroPage() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      if (dataUrl) {
-        setAvatarUrl(dataUrl);
-        toast.success("Foto de perfil carregada!");
-      }
-    };
-    reader.readAsDataURL(file);
+    toast.info("Enviando foto para o Supabase Storage CDN...");
+
+    const publicUrl = await uploadFileToSupabaseStorage(file, "avatars");
+    if (publicUrl) {
+      setAvatarUrl(publicUrl);
+      toast.success("Foto enviada para o CDN do Supabase!");
+    } else {
+      toast.error("Falha ao enviar foto para o Supabase Storage.");
+    }
   };
 
   const handleToggleSetor = (setorId: string) => {

@@ -6,6 +6,7 @@ import { Camera, User, Mail, Briefcase, Sparkles, Check, Upload, ShieldCheck, He
 import { useRouter } from "next/navigation";
 import { getActiveUser, updateActiveUserProfile, saveUserToSupabase, UserAccount, USERS_SEED } from "@/lib/authPermissions";
 import { AppSidebar } from "@/components/AppSidebar";
+import { uploadFileToSupabaseStorage } from "@/lib/supabase";
 import { toast } from "sonner";
 
 export default function PerfilPage() {
@@ -42,7 +43,7 @@ export default function PerfilPage() {
 
   if (!user) return null;
 
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -51,15 +52,15 @@ export default function PerfilPage() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      if (dataUrl) {
-        setAvatarUrl(dataUrl);
-        toast.success("Foto selecionada! Clique em 'Salvar Alterações' para confirmar.");
-      }
-    };
-    reader.readAsDataURL(file);
+    toast.info("Enviando foto de perfil para o Supabase Storage CDN...");
+
+    const publicUrl = await uploadFileToSupabaseStorage(file, "avatars");
+    if (publicUrl) {
+      setAvatarUrl(publicUrl);
+      toast.success("Foto enviada para o CDN! Clique em 'Salvar Alterações' para confirmar.");
+    } else {
+      toast.error("Falha ao fazer upload da imagem para o Supabase Storage.");
+    }
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
