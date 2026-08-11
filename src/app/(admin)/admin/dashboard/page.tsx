@@ -49,6 +49,11 @@ export default function AdminDashboardPage() {
       router.push("/login");
       return;
     }
+    if (user.papel !== "administrador" && user.email !== "mhvzbusiness@gmail.com") {
+      toast.error("Acesso restrito a Administradores.");
+      router.push("/dashboard");
+      return;
+    }
     setUserChecked(true);
   }, [router]);
 

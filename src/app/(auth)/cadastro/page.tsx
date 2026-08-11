@@ -174,13 +174,12 @@ export default function CadastroPage() {
       saveStoredUsuario(novoUsuarioDemandas);
       const updatedUsers = [novaContaAuth, ...currentUsers];
       saveStoredUsers(updatedUsers);
-      setActiveUser(novaContaAuth);
 
       toast.success(
-        `Cadastro concluído com sucesso! Registrado em ${setoresNomes.length} departamento(s): ${setoresNomes.join(", ")}`
+        `Cadastro concluído com sucesso! Faça seu login para acessar sua conta de colaborador.`
       );
       setLoading(false);
-      router.push("/dashboard");
+      router.push("/login");
     }, 600);
   };
 

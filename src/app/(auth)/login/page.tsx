@@ -25,44 +25,74 @@ export default function LoginPage() {
     }
 
     setLoading(true);
-    const users = getStoredUsers();
 
     setTimeout(() => {
-      setLoading(false);
-      const cleanEmail = email.trim().toLowerCase();
+      try {
+        const users = getStoredUsers();
+        const cleanEmail = email.trim().toLowerCase();
 
-      if (activeTab === "administrador") {
-        const adminUser = users.find((u) => u.email.toLowerCase().trim() === cleanEmail && u.papel === "administrador") || (cleanEmail === "mhvzbusiness@gmail.com" ? users.find(u => u.email === "mhvzbusiness@gmail.com") : null);
-
-        if (adminUser) {
-          if (adminUser.senha && adminUser.senha !== password.trim()) {
-            toast.error("Senha incorreta. Acesso negado.");
-            return;
-          }
-          setActiveUser(adminUser);
-          toast.success(`Bem-vindo, Administrador! (${adminUser.email})`);
-          router.push("/admin/dashboard");
-        } else {
-          toast.error("E-mail administrativo incorreto ou conta não encontrada.");
-        }
-      } else {
+        // Buscar usuário por e-mail na base salva
         const matchingUser = users.find(
           (u) => u.email.toLowerCase().trim() === cleanEmail
         );
 
-        if (matchingUser) {
-          if (matchingUser.senha && matchingUser.senha !== password.trim()) {
-            toast.error("Senha incorreta. Tente novamente.");
-            return;
-          }
-          setActiveUser(matchingUser);
-          toast.success(`Bem-vindo de volta, ${matchingUser.nome}!`);
-          router.push("/dashboard");
-        } else {
-          toast.error("E-mail não encontrado. Realize o cadastro abaixo para criar sua conta.");
+        if (!matchingUser) {
+          setLoading(false);
+          toast.error("E-mail não encontrado. Realize o cadastro para criar sua conta.");
+          return;
         }
+
+        // Validação de Senha
+        if (matchingUser.senha && matchingUser.senha !== password.trim()) {
+          setLoading(false);
+          toast.error("Senha incorreta. Tente novamente.");
+          return;
+        }
+
+        // Se o usuário tentar logar na aba Administrador com uma conta que é estritamente Colaborador
+        if (activeTab === "administrador" && matchingUser.papel !== "administrador" && cleanEmail !== "mhvzbusiness@gmail.com") {
+          setLoading(false);
+          toast.error("Esta conta possui perfil de Colaborador. Alterne para a aba 'Colaborador' para entrar.");
+          return;
+        }
+
+        // Define a sessão ativa
+        setActiveUser(matchingUser);
+
+        const isAdminAccount = matchingUser.papel === "administrador" || cleanEmail === "mhvzbusiness@gmail.com";
+        const displayName = matchingUser.comoQuerSerChamado || matchingUser.nickname || matchingUser.nome || "Usuário";
+
+        // Exibe a notificação de boas-vindas
+        if (isAdminAccount) {
+          toast.success(`Seja bem-vindo, Administrador! (${matchingUser.email})`);
+        } else {
+          toast.success(`Seja bem-vindo(a), ${displayName}!`);
+        }
+
+        // Rota de destino explícita por perfil
+        const targetRoute = isAdminAccount ? "/admin/dashboard" : "/dashboard";
+
+        console.log(`[AUTH LOG] Login realizado com sucesso para ${matchingUser.email} [${matchingUser.papel}]. Redirecionando para ${targetRoute}...`);
+
+        setLoading(false);
+
+        // Executa navegação via router do Next.js
+        router.push(targetRoute);
+
+        // Fallback de navegação preventiva
+        setTimeout(() => {
+          if (typeof window !== "undefined" && window.location.pathname === "/login") {
+            console.warn(`[AUTH WARN] Redirecionamento pendente. Executando navegacao fallback para ${targetRoute}`);
+            window.location.href = targetRoute;
+          }
+        }, 350);
+
+      } catch (err) {
+        console.error("[AUTH ERROR] Erro durante o processo de login:", err);
+        setLoading(false);
+        toast.error("Ocorreu um erro ao processar seu login. Tente novamente.");
       }
-    }, 700);
+    }, 600);
   };
 
   return (
