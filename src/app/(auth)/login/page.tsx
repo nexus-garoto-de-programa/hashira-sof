@@ -179,14 +179,14 @@ export default function LoginPage() {
                   {activeTab === "administrador" ? "E-mail Administrativo" : "E-mail do Colaborador"}
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: 'var(--text-muted)' }} />
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none z-10" style={{ color: 'var(--text-muted)' }} />
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={activeTab === "administrador" ? "admin@hashira.com" : "seu@hashira.com"}
-                    className="coursue-input pl-11"
+                    className="coursue-input pl-12"
                   />
                 </div>
               </div>
@@ -197,19 +197,19 @@ export default function LoginPage() {
                   Senha
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: 'var(--text-muted)' }} />
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none z-10" style={{ color: 'var(--text-muted)' }} />
                   <input
                     type={showPassword ? "text" : "password"}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="coursue-input pl-11 pr-11"
+                    className="coursue-input pl-12 pr-12"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 z-10"
                     style={{ color: 'var(--text-muted)' }}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

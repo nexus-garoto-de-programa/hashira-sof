@@ -156,12 +156,27 @@ body {
   border-radius: 9999px;
   background: var(--input-bg);
   border: 1px solid var(--input-border);
-  padding: 0 20px;
+  padding-left: 20px;
+  padding-right: 20px;
   font-size: 0.875rem;
   color: var(--text-primary);
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease;
   width: 100%;
+}
+
+.coursue-input.pl-10,
+.coursue-input.pl-11,
+.coursue-input.pl-12,
+.coursue-input.has-icon-left {
+  padding-left: 48px !important;
+}
+
+.coursue-input.pr-10,
+.coursue-input.pr-11,
+.coursue-input.pr-12,
+.coursue-input.has-icon-right {
+  padding-right: 48px !important;
 }
 
 .coursue-input:focus {

@@ -289,14 +289,14 @@ export default function CadastroPage() {
                     Nome Completo *
                   </label>
                   <div className="relative">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: "var(--text-muted)" }} />
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none z-10" style={{ color: "var(--text-muted)" }} />
                     <input
                       type="text"
                       required
                       value={nome}
                       onChange={(e) => setNome(e.target.value)}
                       placeholder="Seu nome e sobrenome"
-                      className="coursue-input pl-11 text-xs"
+                      className="coursue-input pl-12 text-xs"
                     />
                   </div>
                 </div>
@@ -306,14 +306,14 @@ export default function CadastroPage() {
                     E-mail Corporativo *
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: "var(--text-muted)" }} />
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none z-10" style={{ color: "var(--text-muted)" }} />
                     <input
                       type="email"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="seu@hashira.com"
-                      className="coursue-input pl-11 text-xs"
+                      className="coursue-input pl-12 text-xs"
                     />
                   </div>
                 </div>
@@ -352,13 +352,13 @@ export default function CadastroPage() {
                     Cargo / Função
                   </label>
                   <div className="relative">
-                    <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: "var(--text-muted)" }} />
+                    <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none z-10" style={{ color: "var(--text-muted)" }} />
                     <input
                       type="text"
                       value={cargo}
                       onChange={(e) => setCargo(e.target.value)}
                       placeholder="Ex: Designer Lead, Copywriter"
-                      className="coursue-input pl-11 text-xs"
+                      className="coursue-input pl-12 text-xs"
                     />
                   </div>
                 </div>
@@ -441,19 +441,19 @@ export default function CadastroPage() {
                     Senha *
                   </label>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: "var(--text-muted)" }} />
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none z-10" style={{ color: "var(--text-muted)" }} />
                     <input
                       type={showSenha ? "text" : "password"}
                       required
                       value={senha}
                       onChange={(e) => setSenha(e.target.value)}
                       placeholder="Mínimo 6 caracteres"
-                      className="coursue-input pl-11 pr-11 text-xs"
+                      className="coursue-input pl-12 pr-12 text-xs"
                     />
                     <button
                       type="button"
                       onClick={() => setShowSenha(!showSenha)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 z-10"
                       style={{ color: "var(--text-muted)" }}
                     >
                       {showSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -466,14 +466,14 @@ export default function CadastroPage() {
                     Confirmar Senha *
                   </label>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: "var(--text-muted)" }} />
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none z-10" style={{ color: "var(--text-muted)" }} />
                     <input
                       type={showSenha ? "text" : "password"}
                       required
                       value={confirmarSenha}
                       onChange={(e) => setConfirmarSenha(e.target.value)}
                       placeholder="Confirme a senha"
-                      className="coursue-input pl-11 text-xs"
+                      className="coursue-input pl-12 text-xs"
                     />
                   </div>
                 </div>
