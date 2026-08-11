@@ -8,6 +8,7 @@ import {
   getActiveUser,
   getStoredUsers,
   saveStoredUsers,
+  deleteStoredUser,
   UserAccount,
   DEFAULT_COLLABORATOR_PERMISSIONS,
   ADMIN_PERMISSIONS,
@@ -104,9 +105,7 @@ export default function AdminColaboradoresPage() {
     };
 
     saveStoredUsuario(novoUsuarioDemandas);
-    const updatedUsers = [novoUser, ...users];
-    setUsers(updatedUsers);
-    saveStoredUsers(updatedUsers);
+    saveStoredUsers([novoUser]);
 
     toast.success(`Colaborador ${displayName} convidado e cadastrado com sucesso!`);
     setNome("");
@@ -115,9 +114,7 @@ export default function AdminColaboradoresPage() {
   };
 
   const handleDelete = (id: string) => {
-    const updatedUsers = users.filter((u) => u.id !== id);
-    setUsers(updatedUsers);
-    saveStoredUsers(updatedUsers);
+    deleteStoredUser(id);
     toast.success("Colaborador removido do sistema");
   };
 

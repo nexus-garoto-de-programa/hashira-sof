@@ -100,6 +100,35 @@ export const USERS_SEED: UserAccount[] = [
 
 const STORAGE_KEY_USERS = "central_hashira_users_v2";
 const STORAGE_KEY_ACTIVE_USER = "central_hashira_active_user_v2";
+const STORAGE_KEY_DELETED_USERS = "central_hashira_deleted_users_v2";
+
+export function getDeletedUsersList(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_DELETED_USERS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed.map((s) => String(s).toLowerCase().trim());
+    }
+  } catch (e) {
+    console.error("Erro ao ler lista de deletados", e);
+  }
+  return [];
+}
+
+export function addDeletedUserRecord(identifier: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const list = getDeletedUsersList();
+    const clean = identifier.toLowerCase().trim();
+    if (!list.includes(clean)) {
+      list.push(clean);
+      localStorage.setItem(STORAGE_KEY_DELETED_USERS, JSON.stringify(list));
+    }
+  } catch (e) {
+    console.error("Erro ao salvar registro de usuário deletado", e);
+  }
+}
 
 export function normalizeUserAccount(raw: any): UserAccount {
   if (!raw || typeof raw !== "object") return USERS_SEED[0];
@@ -143,6 +172,7 @@ export function normalizeUserAccount(raw: any): UserAccount {
 export function getStoredUsers(): UserAccount[] {
   if (typeof window === "undefined") return USERS_SEED;
   try {
+    const deletedList = getDeletedUsersList();
     const raw = localStorage.getItem(STORAGE_KEY_USERS);
     let list: UserAccount[] = [];
     if (raw) {
@@ -152,10 +182,22 @@ export function getStoredUsers(): UserAccount[] {
       }
     }
 
-    // Garante fusão com os usuários SEED para que ninguém se perca
     const map = new Map<string, UserAccount>();
-    USERS_SEED.forEach((u) => map.set(u.email.toLowerCase().trim(), u));
-    list.forEach((u) => map.set(u.email.toLowerCase().trim(), u));
+    USERS_SEED.forEach((u) => {
+      const cleanEmail = u.email.toLowerCase().trim();
+      const cleanId = u.id.toLowerCase().trim();
+      if (!deletedList.includes(cleanEmail) && !deletedList.includes(cleanId)) {
+        map.set(cleanEmail, u);
+      }
+    });
+
+    list.forEach((u) => {
+      const cleanEmail = u.email.toLowerCase().trim();
+      const cleanId = u.id.toLowerCase().trim();
+      if (!deletedList.includes(cleanEmail) && !deletedList.includes(cleanId)) {
+        map.set(cleanEmail, u);
+      }
+    });
 
     const merged = Array.from(map.values());
     if (!raw) {
@@ -171,7 +213,7 @@ export function getStoredUsers(): UserAccount[] {
 export function saveStoredUsers(users: UserAccount[]) {
   if (typeof window === "undefined") return;
   try {
-    // Busca registros atuais do localStorage para fusão atômica (não sobrescrever dados por race condition)
+    const deletedList = getDeletedUsersList();
     let currentInStore: UserAccount[] = [];
     const raw = localStorage.getItem(STORAGE_KEY_USERS);
     if (raw) {
@@ -182,11 +224,29 @@ export function saveStoredUsers(users: UserAccount[]) {
     }
 
     const map = new Map<string, UserAccount>();
-    USERS_SEED.forEach((u) => map.set(u.email.toLowerCase().trim(), u));
-    currentInStore.forEach((u) => map.set(u.email.toLowerCase().trim(), u));
+    USERS_SEED.forEach((u) => {
+      const cleanEmail = u.email.toLowerCase().trim();
+      const cleanId = u.id.toLowerCase().trim();
+      if (!deletedList.includes(cleanEmail) && !deletedList.includes(cleanId)) {
+        map.set(cleanEmail, u);
+      }
+    });
+
+    currentInStore.forEach((u) => {
+      const cleanEmail = u.email.toLowerCase().trim();
+      const cleanId = u.id.toLowerCase().trim();
+      if (!deletedList.includes(cleanEmail) && !deletedList.includes(cleanId)) {
+        map.set(cleanEmail, u);
+      }
+    });
+
     users.forEach((u) => {
       const normalized = normalizeUserAccount(u);
-      map.set(normalized.email.toLowerCase().trim(), normalized);
+      const cleanEmail = normalized.email.toLowerCase().trim();
+      const cleanId = normalized.id.toLowerCase().trim();
+      if (!deletedList.includes(cleanEmail) && !deletedList.includes(cleanId)) {
+        map.set(cleanEmail, normalized);
+      }
     });
 
     const deduplicated = Array.from(map.values());
@@ -214,6 +274,59 @@ export function saveStoredUsers(users: UserAccount[]) {
     window.dispatchEvent(new CustomEvent("hashira_users_updated"));
   } catch (e) {
     console.error("Erro ao salvar usuários de auth", e);
+  }
+}
+
+export function deleteStoredUser(identifier: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const cleanIdent = identifier.toLowerCase().trim();
+    addDeletedUserRecord(cleanIdent);
+
+    const currentUsers = getStoredUsers();
+    const targetUser = currentUsers.find(
+      (u) => u.id.toLowerCase().trim() === cleanIdent || u.email.toLowerCase().trim() === cleanIdent
+    );
+
+    if (targetUser) {
+      addDeletedUserRecord(targetUser.id);
+      addDeletedUserRecord(targetUser.email);
+    }
+
+    const updatedUsers = currentUsers.filter(
+      (u) => u.id.toLowerCase().trim() !== cleanIdent && u.email.toLowerCase().trim() !== cleanIdent
+    );
+
+    localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(updatedUsers));
+
+    // Sincroniza a chave de demandas "hashira_cascade_usuarios_v3"
+    try {
+      const demandasUsuariosFormat = updatedUsers.map((u) => ({
+        id: u.id,
+        nome: u.nome,
+        email: u.email,
+        papel: u.papel,
+        setorId: "sec-funil",
+        setorNome: u.setorNome || "Estrutura de Funil",
+        statusConta: "ativo",
+        avatarUrl: u.avatarUrl,
+        criadoEm: new Date().toISOString(),
+      }));
+      localStorage.setItem("hashira_cascade_usuarios_v3", JSON.stringify(demandasUsuariosFormat));
+    } catch (e) {
+      console.error("Erro ao sincronizar hashira_cascade_usuarios_v3 na exclusao", e);
+    }
+
+    // Se o usuário ativo for o deletado, limpa a sessão
+    const active = getActiveUser();
+    if (active && (active.id.toLowerCase().trim() === cleanIdent || active.email.toLowerCase().trim() === cleanIdent)) {
+      clearActiveUser();
+    }
+
+    // Dispara evento para atualização em tempo real no front-end
+    window.dispatchEvent(new CustomEvent("hashira_users_updated"));
+  } catch (e) {
+    console.error("Erro ao deletar usuário", e);
   }
 }
 
