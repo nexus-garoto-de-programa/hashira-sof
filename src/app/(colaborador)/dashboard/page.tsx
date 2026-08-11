@@ -136,14 +136,20 @@ export default function CollaboratorDashboardPage() {
   const totalDemandas = userDemandas.length;
   const pctConclusaoGeral = totalDemandas > 0 ? Math.round((demandasConcluidas / totalDemandas) * 100) : 0;
 
-  const chartData = [
-    { name: "Seg", concluida: 4 },
-    { name: "Ter", concluida: 7 },
-    { name: "Qua", concluida: 5 },
-    { name: "Qui", concluida: 9 },
-    { name: "Sex", concluida: 6 },
-    { name: "Sáb", concluida: 2 },
-  ];
+  // Calculo real das conclusões por dia da semana (Seg a Sáb) baseado em userDemandas reais
+  const diasSemana = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+  const chartData = diasSemana.map((diaLabel, idx) => {
+    // Seg=1, Ter=2, Qua=3, Qui=4, Sex=5, Sab=6
+    const targetDayIndex = idx + 1;
+    const count = userDemandas.filter((d) => {
+      if (d.status !== "concluida") return false;
+      if (!d.criadoEm) return false;
+      const date = new Date(d.criadoEm);
+      const day = date.getDay(); // 0: Dom, 1: Seg, ... 6: Sáb
+      return day === targetDayIndex;
+    }).length;
+    return { name: diaLabel, concluida: count };
+  });
 
   const handleUpdateStatus = (demandaId: string, newStatus: StatusDemanda, comentario?: string) => {
     const atualizadas = demandas.map((d) => {
@@ -467,12 +473,37 @@ export default function CollaboratorDashboardPage() {
                 strokeWidth={9}
               />
 
-              <h4 className="mt-4 text-base font-extrabold font-['Plus_Jakarta_Sans']" style={{ color: 'var(--text-primary)' }}>
-                Continue assim, você está indo bem! 🔥
-              </h4>
-              <p className="mt-1 text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                Você concluiu <strong className="text-[#5B50E5]">{pctConclusaoGeral}%</strong> das suas entregas neste período.
-              </p>
+              {/* Mensagem dinâmica por faixa de desempenho */}
+              {(() => {
+                let title = "Que tal começar a primeira tarefa? 🚀";
+                let emoji = "🌱";
+                if (pctConclusaoGeral === 100) {
+                  title = "Desempenho Impecável! Nível Hashira máximo!";
+                  emoji = "👑⚡";
+                } else if (pctConclusaoGeral >= 75) {
+                  title = "Excelente ritmo! Você está quase lá!";
+                  emoji = "🔥⚡";
+                } else if (pctConclusaoGeral >= 50) {
+                  title = "Bom progresso! Metade das entregas concluídas!";
+                  emoji = "💪🎯";
+                } else if (pctConclusaoGeral > 0) {
+                  title = "Suas entregas iniciaram. Mantenha o foco!";
+                  emoji = "⏳✨";
+                }
+
+                return (
+                  <>
+                    <h4 className="mt-4 text-sm font-extrabold font-['Plus_Jakarta_Sans'] leading-tight" style={{ color: 'var(--text-primary)' }}>
+                      {title} {emoji}
+                    </h4>
+                    <p className="mt-1 text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                      {pctConclusaoGeral === 0
+                        ? "Você ainda não possui entregas concluídas neste período."
+                        : <>Você concluiu <strong className="text-[#5B50E5]">{pctConclusaoGeral}%</strong> das suas entregas neste período.</>}
+                    </p>
+                  </>
+                );
+              })()}
 
               {/* Recharts Bar Chart */}
               <div className="w-full h-36 mt-6">
