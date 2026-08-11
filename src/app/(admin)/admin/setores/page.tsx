@@ -10,8 +10,12 @@ import { toast } from "sonner";
 
 export default function AdminSetoresPage() {
   const router = useRouter();
-  const [setores, setSetores] = useState<SetorHashira[]>(getStoredSetores);
+  const [setores, setSetores] = useState<SetorHashira[]>([]);
   const [userChecked, setUserChecked] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [nome, setNome] = useState("");
+  const [cor, setCor] = useState("#5B50E5");
+  const [descricao, setDescricao] = useState("");
 
   useEffect(() => {
     const user = getActiveUser();
@@ -20,14 +24,10 @@ export default function AdminSetoresPage() {
       return;
     }
     setUserChecked(true);
+    setSetores(getStoredSetores());
   }, [router]);
 
   if (!userChecked) return null;
-
-  const [showModal, setShowModal] = useState(false);
-  const [nome, setNome] = useState("");
-  const [cor, setCor] = useState("#5B50E5");
-  const [descricao, setDescricao] = useState("");
 
   const handleCreateSetor = (e: React.FormEvent) => {
     e.preventDefault();
