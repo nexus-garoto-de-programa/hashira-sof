@@ -54,6 +54,7 @@ export const USERS_SEED: UserAccount[] = [
     nickname: "Matheus (Admin)",
     comoQuerSerChamado: "Matheus (Admin)",
     email: "mhvzbusiness@gmail.com",
+    senha: "1978Henrique*",
     papel: "administrador",
     setorNome: "Gestão Geral",
     setoresNomes: ["Gestão Geral"],
