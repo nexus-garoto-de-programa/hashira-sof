@@ -241,6 +241,11 @@ export function normalizeUserAccount(raw: any): UserAccount {
   const nickname = raw.nickname ? String(raw.nickname) : nome;
   const comoQuerSerChamado = raw.comoQuerSerChamado ? String(raw.comoQuerSerChamado) : nickname;
 
+  let avatarUrl = String(raw.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80");
+  if (avatarUrl.startsWith("data:image")) {
+    avatarUrl = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80";
+  }
+
   return {
     id: String(raw.id || "usr-" + Date.now()),
     nome,
@@ -253,7 +258,7 @@ export function normalizeUserAccount(raw: any): UserAccount {
     papel,
     setorNome,
     setoresNomes,
-    avatarUrl: String(raw.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"),
+    avatarUrl,
     permissoes: {
       acessoDashboard: raw.permissoes?.acessoDashboard ?? true,
       acessoOperacoes: raw.permissoes?.acessoOperacoes ?? true,
