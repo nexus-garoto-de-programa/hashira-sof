@@ -147,14 +147,163 @@ export const SETORES_OPERACOES: OperacoesSetor[] = [
 // Seed Inicial de Tarefas Zerada por solicitação do usuário
 export const TAREFAS_OPERACOES_SEED: OperacoesTarefa[] = [];
 
-export const PROJETOS_OPERACOES_SEED: OperacoesProjeto[] = [];
-
 export const ACTIVITIES_SEED: ActivityLog[] = [];
 
 const STORAGE_KEY_OPER_TAREFAS = "central_operacoes_tarefas_v4";
 const STORAGE_KEY_OPER_PROJETOS = "central_operacoes_projetos_v4";
 const STORAGE_KEY_OPER_SETORES = "central_operacoes_setores_v4";
-const STORAGE_OPER_CLEARED = "central_operacoes_tarefas_cleared_v4";
+
+import { supabase } from "@/lib/supabase";
+
+export function mapSupabaseRowToOperacoesTarefa(row: any): OperacoesTarefa {
+  return {
+    id: row.id,
+    titulo: row.titulo,
+    setorId: row.setor_id || "sec-funil",
+    setorNome: row.setor_nome || "Estrutura de Funil",
+    status: row.status || "nao_iniciado",
+    atrasoDias: row.atraso_dias ?? 0,
+    membro: row.membro || {
+      id: row.responsavel_id || "m-mh",
+      initials: row.responsavel_nome ? row.responsavel_nome.substring(0, 2).toUpperCase() : "MH",
+      name: row.responsavel_nome || "Matheus Henrique",
+      color: "#3B82F6",
+      avatarBg: "#3B82F6",
+    },
+    dataEntrega: row.prazo || new Date().toISOString().split("T")[0],
+    projetoId: row.projeto_id,
+    projetoNome: row.projeto_nome,
+  };
+}
+
+export function mapOperacoesTarefaToSupabaseRow(t: OperacoesTarefa) {
+  return {
+    id: t.id,
+    titulo: t.titulo,
+    status: t.status,
+    setor_id: t.setorId,
+    setor_nome: t.setorNome,
+    responsavel_id: t.membro?.id,
+    responsavel_nome: t.membro?.name,
+    responsavel_avatar: t.membro?.color,
+    prazo: t.dataEntrega,
+    membro: t.membro,
+    projeto_id: t.projetoId,
+    projeto_nome: t.projetoNome,
+  };
+}
+
+export async function fetchOperacoesTarefasFromSupabase(): Promise<OperacoesTarefa[]> {
+  try {
+    const { data, error } = await supabase.from("operacoes_tarefas").select("*");
+    if (error) {
+      console.warn("[SUPABASE WARN] Falha ao ler operacoes_tarefas, usando localStorage:", error.message);
+      return getStoredOperacoesTarefas();
+    }
+    if (data) {
+      const tarefas = data.map(mapSupabaseRowToOperacoesTarefa);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(STORAGE_KEY_OPER_TAREFAS, JSON.stringify(tarefas));
+        } catch (e) {}
+      }
+      return tarefas;
+    }
+  } catch (e) {
+    console.error("[SUPABASE ERROR] Exceção ao buscar operacoes_tarefas:", e);
+  }
+  return getStoredOperacoesTarefas();
+}
+
+export async function saveOperacoesTarefaToSupabase(tarefa: OperacoesTarefa): Promise<boolean> {
+  try {
+    const row = mapOperacoesTarefaToSupabaseRow(tarefa);
+    const { error } = await supabase.from("operacoes_tarefas").upsert(row, { onConflict: "id" });
+    if (error) {
+      console.error("[SUPABASE ERROR] Falha ao salvar operacoes_tarefa no Supabase:", error.message);
+    }
+  } catch (e) {
+    console.error("[SUPABASE ERROR] Exceção ao salvar operacoes_tarefa:", e);
+  }
+  const current = getStoredOperacoesTarefas();
+  const updated = [tarefa, ...current.filter((t) => t.id !== tarefa.id)];
+  saveStoredOperacoesTarefas(updated);
+  window.dispatchEvent(new CustomEvent("hashira_operacoes_tarefas_updated"));
+  return true;
+}
+
+export async function deleteOperacoesTarefaFromSupabase(id: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.from("operacoes_tarefas").delete().eq("id", id);
+    if (error) {
+      console.error("[SUPABASE ERROR] Falha ao deletar operacoes_tarefa:", error.message);
+    }
+  } catch (e) {
+    console.error("[SUPABASE ERROR] Exceção ao deletar operacoes_tarefa:", e);
+  }
+  const current = getStoredOperacoesTarefas();
+  const updated = current.filter((t) => t.id !== id);
+  saveStoredOperacoesTarefas(updated);
+  window.dispatchEvent(new CustomEvent("hashira_operacoes_tarefas_updated"));
+  return true;
+}
+
+export async function fetchOperacoesSetoresFromSupabase(): Promise<OperacoesSetor[]> {
+  try {
+    const { data, error } = await supabase.from("operacoes_setores").select("*");
+    if (error) {
+      console.warn("[SUPABASE WARN] Falha ao ler operacoes_setores, usando localStorage:", error.message);
+      return getStoredOperacoesSetores();
+    }
+    if (data && data.length > 0) {
+      const setoresMapped: OperacoesSetor[] = data.map((s: any) => ({
+        id: s.id,
+        nome: s.nome,
+        descricao: s.descricao || "",
+        icone: s.icone || "Layers",
+        capaUrl: s.capa_url || undefined,
+        totalTarefas: s.total_tarefas ?? 0,
+        concluidas: s.concluidas ?? 0,
+        pendentes: s.pendentes ?? 0,
+      }));
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(STORAGE_KEY_OPER_SETORES, JSON.stringify(setoresMapped));
+        } catch (e) {}
+      }
+      return setoresMapped;
+    }
+  } catch (e) {
+    console.error("[SUPABASE ERROR] Exceção ao buscar operacoes_setores:", e);
+  }
+  return getStoredOperacoesSetores();
+}
+
+export async function saveOperacoesSetorToSupabase(setor: OperacoesSetor): Promise<boolean> {
+  try {
+    const row = {
+      id: setor.id,
+      nome: setor.nome,
+      descricao: setor.descricao,
+      icone: setor.icone,
+      capa_url: setor.capaUrl,
+      total_tarefas: setor.totalTarefas,
+      concluidas: setor.concluidas,
+      pendentes: setor.pendentes,
+    };
+    const { error } = await supabase.from("operacoes_setores").upsert(row, { onConflict: "id" });
+    if (error) {
+      console.error("[SUPABASE ERROR] Falha ao salvar operacoes_setor no Supabase:", error.message);
+    }
+  } catch (e) {
+    console.error("[SUPABASE ERROR] Exceção ao salvar operacoes_setor:", e);
+  }
+  const current = getStoredOperacoesSetores();
+  const updated = current.map((s) => (s.id === setor.id ? setor : s));
+  saveStoredOperacoesSetores(updated);
+  window.dispatchEvent(new CustomEvent("hashira_operacoes_setores_updated"));
+  return true;
+}
 
 export function getStoredOperacoesSetores(): OperacoesSetor[] {
   if (typeof window === "undefined") return SETORES_OPERACOES;
@@ -177,6 +326,7 @@ export function saveStoredOperacoesSetores(setores: OperacoesSetor[]) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(STORAGE_KEY_OPER_SETORES, JSON.stringify(setores));
+    window.dispatchEvent(new CustomEvent("hashira_operacoes_setores_updated"));
   } catch (e) {
     console.error("Erro ao salvar setores da Central de Operações", e);
   }
@@ -185,13 +335,6 @@ export function saveStoredOperacoesSetores(setores: OperacoesSetor[]) {
 export function getStoredOperacoesTarefas(): OperacoesTarefa[] {
   if (typeof window === "undefined") return [];
   try {
-    const isCleared = localStorage.getItem(STORAGE_OPER_CLEARED);
-    if (!isCleared) {
-      localStorage.setItem(STORAGE_KEY_OPER_TAREFAS, JSON.stringify([]));
-      localStorage.setItem(STORAGE_OPER_CLEARED, "true");
-      return [];
-    }
-
     const raw = localStorage.getItem(STORAGE_KEY_OPER_TAREFAS);
     if (raw) return JSON.parse(raw);
   } catch (e) {
@@ -204,6 +347,7 @@ export function saveStoredOperacoesTarefas(tarefas: OperacoesTarefa[]) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(STORAGE_KEY_OPER_TAREFAS, JSON.stringify(tarefas));
+    window.dispatchEvent(new CustomEvent("hashira_operacoes_tarefas_updated"));
   } catch (e) {
     console.error("Erro ao salvar tarefas da Central de Operações", e);
   }

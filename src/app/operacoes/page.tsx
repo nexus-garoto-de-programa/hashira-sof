@@ -22,6 +22,11 @@ import {
   saveStoredOperacoesSetores,
   getStoredOperacoesTarefas,
   saveStoredOperacoesTarefas,
+  fetchOperacoesSetoresFromSupabase,
+  fetchOperacoesTarefasFromSupabase,
+  saveOperacoesSetorToSupabase,
+  saveOperacoesTarefaToSupabase,
+  deleteOperacoesTarefaFromSupabase,
 } from "@/lib/operacoesData";
 
 import { AppSidebar } from "@/components/AppSidebar";
@@ -32,7 +37,8 @@ import { PerformanceTab } from "@/components/operacoes/PerformanceTab";
 import { CalendarioTab } from "@/components/operacoes/CalendarioTab";
 import { NovaTarefaModal } from "@/components/operacoes/NovaTarefaModal";
 
-import { getActiveUser, getStoredUsers, UserAccount } from "@/lib/authPermissions";
+import { getActiveUser, fetchUsersFromSupabase, UserAccount } from "@/lib/authPermissions";
+import { supabase } from "@/lib/supabase";
 
 type ActiveTab = "setores" | "tarefas" | "projetos" | "performance" | "calendario";
 
@@ -40,8 +46,8 @@ export default function CentralOperacoesPage() {
   const router = useRouter();
   const [activeUser, setActiveUser] = useState<UserAccount | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>("setores");
-  const [setores, setSetores] = useState<OperacoesSetor[]>(getStoredOperacoesSetores);
-  const [tarefas, setTarefas] = useState<OperacoesTarefa[]>(getStoredOperacoesTarefas);
+  const [setores, setSetores] = useState<OperacoesSetor[]>([]);
+  const [tarefas, setTarefas] = useState<OperacoesTarefa[]>([]);
   const [showNovaModal, setShowNovaModal] = useState(false);
   const [teamUsers, setTeamUsers] = useState<UserAccount[]>([]);
 
@@ -52,30 +58,66 @@ export default function CentralOperacoesPage() {
       return;
     }
     setActiveUser(user);
-    setTeamUsers(getStoredUsers());
+
+    const reloadData = async () => {
+      const [remoteUsers, remoteSetores, remoteTarefas] = await Promise.all([
+        fetchUsersFromSupabase(),
+        fetchOperacoesSetoresFromSupabase(),
+        fetchOperacoesTarefasFromSupabase(),
+      ]);
+      setTeamUsers(remoteUsers);
+      setSetores(remoteSetores);
+      setTarefas(remoteTarefas);
+    };
+
+    reloadData();
+
+    const channelSetores = supabase
+      .channel("operacoes-setores-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "operacoes_setores" }, () => {
+        reloadData();
+      })
+      .subscribe();
+
+    const channelTarefas = supabase
+      .channel("operacoes-tarefas-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "operacoes_tarefas" }, () => {
+        reloadData();
+      })
+      .subscribe();
+
+    window.addEventListener("hashira_operacoes_setores_updated", reloadData);
+    window.addEventListener("hashira_operacoes_tarefas_updated", reloadData);
+    window.addEventListener("storage", reloadData);
+
+    return () => {
+      supabase.removeChannel(channelSetores);
+      supabase.removeChannel(channelTarefas);
+      window.removeEventListener("hashira_operacoes_setores_updated", reloadData);
+      window.removeEventListener("hashira_operacoes_tarefas_updated", reloadData);
+      window.removeEventListener("storage", reloadData);
+    };
   }, [router]);
 
   if (!activeUser) return null;
 
   const isAdmin = activeUser.email === "mhvzbusiness@gmail.com" || activeUser.papel === "administrador";
 
-  const updateSetoresState = (novos: OperacoesSetor[]) => {
-    setSetores(novos);
-    saveStoredOperacoesSetores(novos);
+  const handleUpdateCoverImage = async (setorId: string, dataUrl: string) => {
+    const setorTarget = setores.find((s) => s.id === setorId);
+    if (setorTarget) {
+      const atualizado = { ...setorTarget, capaUrl: dataUrl };
+      await saveOperacoesSetorToSupabase(atualizado);
+    }
   };
 
-  const handleUpdateCoverImage = (setorId: string, dataUrl: string) => {
-    const atualizados = setores.map((s) => (s.id === setorId ? { ...s, capaUrl: dataUrl } : s));
-    updateSetoresState(atualizados);
-  };
-
-  const updateTarefas = (novas: OperacoesTarefa[]) => {
+  const updateTarefas = async (novas: OperacoesTarefa[]) => {
     setTarefas(novas);
     saveStoredOperacoesTarefas(novas);
   };
 
-  const handleSaveNovaTarefa = (nova: OperacoesTarefa) => {
-    updateTarefas([nova, ...tarefas]);
+  const handleSaveNovaTarefa = async (nova: OperacoesTarefa) => {
+    await saveOperacoesTarefaToSupabase(nova);
   };
 
   const tabs = [

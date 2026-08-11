@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, Sparkles, CheckCircle2, User as UserIcon } from "lucide-react";
 import { OperacoesTarefa, SETORES_OPERACOES, ColumnStatus, TeamMember } from "@/lib/operacoesData";
-import { getStoredUsers, UserAccount } from "@/lib/authPermissions";
+import { getStoredUsers, fetchUsersFromSupabase, UserAccount } from "@/lib/authPermissions";
 import { toast } from "sonner";
 
 interface NovaTarefaModalProps {
@@ -25,11 +25,14 @@ export const NovaTarefaModal: React.FC<NovaTarefaModalProps> = ({ open, onClose,
 
   useEffect(() => {
     if (open) {
-      const users = getStoredUsers();
-      setUsersList(users);
-      if (users.length > 0) {
-        setSelectedUser((prev) => (prev && users.some(u => u.id === prev.id) ? prev : users[0]));
-      }
+      const loadUsers = async () => {
+        const users = await fetchUsersFromSupabase();
+        setUsersList(users);
+        if (users.length > 0) {
+          setSelectedUser((prev) => (prev && users.some(u => u.id === prev.id) ? prev : users[0]));
+        }
+      };
+      loadUsers();
     }
   }, [open]);
 
