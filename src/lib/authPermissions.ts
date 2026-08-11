@@ -471,10 +471,11 @@ export function updateActiveUserProfile(updates: Partial<UserAccount>): UserAcco
   });
   setActiveUser(updatedUser);
 
-  // Synchronize in users list
+  // Synchronize in users list locally and remotely on Supabase
   const allUsers = getStoredUsers();
   const updatedList = allUsers.map((u) => (u.id === updatedUser.id ? updatedUser : u));
   saveStoredUsers(updatedList);
+  saveUserToSupabase(updatedUser);
 
   return updatedUser;
 }

@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Camera, User, Mail, Briefcase, Sparkles, Check, Upload, ShieldCheck, Heart } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { getActiveUser, updateActiveUserProfile, UserAccount, USERS_SEED } from "@/lib/authPermissions";
+import { getActiveUser, updateActiveUserProfile, saveUserToSupabase, UserAccount, USERS_SEED } from "@/lib/authPermissions";
 import { AppSidebar } from "@/components/AppSidebar";
 import { toast } from "sonner";
 
@@ -62,7 +62,7 @@ export default function PerfilPage() {
     reader.readAsDataURL(file);
   };
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nome.trim()) {
       toast.error("Informe seu nome completo");
@@ -71,7 +71,7 @@ export default function PerfilPage() {
 
     setSaving(true);
 
-    setTimeout(() => {
+    try {
       const updated = updateActiveUserProfile({
         nome: nome.trim(),
         nickname: nickname.trim() || nome.split(" ")[0],
@@ -83,10 +83,17 @@ export default function PerfilPage() {
         avatarUrl,
       });
 
-      setUser(updated);
+      if (updated) {
+        setUser(updated);
+        await saveUserToSupabase(updated);
+      }
       setSaving(false);
-      toast.success("Perfil atualizado com sucesso!");
-    }, 400);
+      toast.success("Perfil e foto atualizados com sucesso para toda a equipe!");
+    } catch (err) {
+      console.error("Erro ao salvar perfil:", err);
+      setSaving(false);
+      toast.error("Erro ao sincronizar foto de perfil com a nuvem.");
+    }
   };
 
   const displayName = comoQuerSerChamado || nickname || nome || "Usuário";
