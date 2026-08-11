@@ -123,6 +123,14 @@ export default function CadastroPage() {
       return;
     }
 
+    const currentUsers = getStoredUsers();
+    const cleanEmail = email.trim().toLowerCase();
+    const existingUser = currentUsers.find((u) => u.email.toLowerCase().trim() === cleanEmail);
+    if (existingUser) {
+      toast.error("Este e-mail já está cadastrado no sistema. Faça login para acessar sua conta.");
+      return;
+    }
+
     setLoading(true);
 
     const setoresSelecionadosObjs = HASHIRAS_SEED.filter((s) => selectedSetoresIds.includes(s.id));
@@ -137,7 +145,7 @@ export default function CadastroPage() {
     const novoUsuarioDemandas: Usuario = {
       id: userId,
       nome: nome.trim(),
-      email: email.trim(),
+      email: cleanEmail,
       papel: "colaborador",
       setorId: setorPrincipal.id,
       setorNome: setorPrincipal.nome,
@@ -153,7 +161,8 @@ export default function CadastroPage() {
       comoQuerSerChamado: finalComoChamar,
       cargo: cargo.trim() || "Operador de Demandas",
       bio: bio.trim() || "Novo integrante do time Hashira Sensi.",
-      email: email.trim(),
+      email: cleanEmail,
+      senha: senha.trim(),
       papel: "colaborador",
       setorNome: setorPrincipal.nome,
       setoresNomes: setoresNomes,
@@ -163,12 +172,12 @@ export default function CadastroPage() {
 
     setTimeout(() => {
       saveStoredUsuario(novoUsuarioDemandas);
-      const currentUsers = getStoredUsers();
-      saveStoredUsers([novaContaAuth, ...currentUsers]);
+      const updatedUsers = [novaContaAuth, ...currentUsers];
+      saveStoredUsers(updatedUsers);
       setActiveUser(novaContaAuth);
 
       toast.success(
-        `Pré-cadastro concluído! Registrado em ${setoresNomes.length} departamento(s): ${setoresNomes.join(", ")}`
+        `Cadastro concluído com sucesso! Registrado em ${setoresNomes.length} departamento(s): ${setoresNomes.join(", ")}`
       );
       setLoading(false);
       router.push("/dashboard");

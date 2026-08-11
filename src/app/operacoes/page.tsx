@@ -32,7 +32,7 @@ import { PerformanceTab } from "@/components/operacoes/PerformanceTab";
 import { CalendarioTab } from "@/components/operacoes/CalendarioTab";
 import { NovaTarefaModal } from "@/components/operacoes/NovaTarefaModal";
 
-import { getActiveUser, USERS_SEED, UserAccount } from "@/lib/authPermissions";
+import { getActiveUser, getStoredUsers, UserAccount } from "@/lib/authPermissions";
 
 type ActiveTab = "setores" | "tarefas" | "projetos" | "performance" | "calendario";
 
@@ -43,6 +43,7 @@ export default function CentralOperacoesPage() {
   const [setores, setSetores] = useState<OperacoesSetor[]>(getStoredOperacoesSetores);
   const [tarefas, setTarefas] = useState<OperacoesTarefa[]>(getStoredOperacoesTarefas);
   const [showNovaModal, setShowNovaModal] = useState(false);
+  const [teamUsers, setTeamUsers] = useState<UserAccount[]>([]);
 
   useEffect(() => {
     const user = getActiveUser();
@@ -51,6 +52,7 @@ export default function CentralOperacoesPage() {
       return;
     }
     setActiveUser(user);
+    setTeamUsers(getStoredUsers());
   }, [router]);
 
   if (!activeUser) return null;
@@ -141,18 +143,22 @@ export default function CentralOperacoesPage() {
             <div className="flex flex-wrap items-center gap-6">
               <div className="flex items-center gap-2">
                 <div className="flex -space-x-2 overflow-hidden">
-                  {TEAM_MEMBERS.map((m) => (
-                    <div
-                      key={m.id}
-                      className="inline-block h-9 w-9 rounded-full flex items-center justify-center text-xs font-extrabold text-white ring-2 ring-[#1E1B4B]"
-                      style={{ backgroundColor: m.avatarBg }}
-                      title={m.name}
-                    >
-                      {m.initials}
-                    </div>
-                  ))}
+                  {teamUsers.slice(0, 5).map((u) => {
+                    const displayName = u.comoQuerSerChamado || u.nickname || u.nome;
+                    return (
+                      <img
+                        key={u.id}
+                        src={u.avatarUrl}
+                        alt={displayName}
+                        title={`${displayName} (${u.setorNome})`}
+                        className="inline-block h-9 w-9 rounded-full object-cover ring-2 ring-[#1E1B4B]"
+                      />
+                    );
+                  })}
                 </div>
-                <span className="text-xs font-bold text-white/80">+ 0 membros</span>
+                <span className="text-xs font-bold text-white/80">
+                  {teamUsers.length > 5 ? `+ ${teamUsers.length - 5} membros` : `${teamUsers.length} membro(s)`}
+                </span>
               </div>
 
               {isAdmin && (

@@ -18,8 +18,6 @@ export const CreateDemandModal: React.FC<CreateDemandModalProps> = ({
   onClose,
   onSave,
 }) => {
-  if (!open) return null;
-
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
   const [setorId, setSetorId] = useState(HASHIRAS_SEED[0].id);
@@ -41,12 +39,16 @@ export const CreateDemandModal: React.FC<CreateDemandModalProps> = ({
   const [anexoTipo, setAnexoTipo] = useState<"imagem" | "video" | "link">("link");
 
   useEffect(() => {
-    const users = getStoredUsers();
-    setAvailableUsers(users);
-    if (users.length > 0) {
-      setSelectedUser(users[0]);
+    if (open) {
+      const users = getStoredUsers();
+      setAvailableUsers(users);
+      if (users.length > 0) {
+        setSelectedUser((prev) => (prev && users.some(u => u.id === prev.id) ? prev : users[0]));
+      }
     }
   }, [open]);
+
+  if (!open) return null;
 
   const handleAddAnexo = () => {
     if (!anexoTitulo.trim() || !anexoUrl.trim()) {

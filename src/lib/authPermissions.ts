@@ -17,6 +17,7 @@ export interface UserAccount {
   cargo?: string;
   bio?: string;
   email: string;
+  senha?: string;
   papel: "colaborador" | "administrador";
   setorNome: string;
   setoresNomes?: string[];
@@ -121,6 +122,7 @@ export function normalizeUserAccount(raw: any): UserAccount {
     cargo: raw.cargo ? String(raw.cargo) : (papel === "administrador" ? "Administrador Geral" : "Operador de Demandas"),
     bio: raw.bio ? String(raw.bio) : "Integrante da equipe Hashira.",
     email,
+    senha: raw.senha ? String(raw.senha) : undefined,
     papel,
     setorNome,
     setoresNomes,

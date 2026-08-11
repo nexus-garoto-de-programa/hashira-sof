@@ -29,28 +29,37 @@ export default function LoginPage() {
 
     setTimeout(() => {
       setLoading(false);
+      const cleanEmail = email.trim().toLowerCase();
 
       if (activeTab === "administrador") {
-        const adminUser = users.find((u) => u.email.toLowerCase() === email.toLowerCase() && u.papel === "administrador") || (email.toLowerCase() === "mhvzbusiness@gmail.com" ? users.find(u => u.email === "mhvzbusiness@gmail.com") : null);
+        const adminUser = users.find((u) => u.email.toLowerCase().trim() === cleanEmail && u.papel === "administrador") || (cleanEmail === "mhvzbusiness@gmail.com" ? users.find(u => u.email === "mhvzbusiness@gmail.com") : null);
 
         if (adminUser) {
+          if (adminUser.senha && adminUser.senha !== password.trim()) {
+            toast.error("Senha incorreta. Acesso negado.");
+            return;
+          }
           setActiveUser(adminUser);
           toast.success(`Bem-vindo, Administrador! (${adminUser.email})`);
           router.push("/admin/dashboard");
         } else {
-          toast.error("E-mail administrativo ou senha incorretos. Acesso restrito a administradores.");
+          toast.error("E-mail administrativo incorreto ou conta não encontrada.");
         }
       } else {
         const matchingUser = users.find(
-          (u) => u.email.toLowerCase() === email.toLowerCase() && u.papel === "colaborador"
+          (u) => u.email.toLowerCase().trim() === cleanEmail
         );
 
         if (matchingUser) {
+          if (matchingUser.senha && matchingUser.senha !== password.trim()) {
+            toast.error("Senha incorreta. Tente novamente.");
+            return;
+          }
           setActiveUser(matchingUser);
           toast.success(`Bem-vindo de volta, ${matchingUser.nome}!`);
           router.push("/dashboard");
         } else {
-          toast.error("E-mail ou senha incorretos. Caso ainda não possua conta, realize o pré-cadastro abaixo.");
+          toast.error("E-mail não encontrado. Realize o cadastro abaixo para criar sua conta.");
         }
       }
     }, 700);

@@ -14,8 +14,6 @@ interface NovaTarefaModalProps {
 }
 
 export const NovaTarefaModal: React.FC<NovaTarefaModalProps> = ({ open, onClose, onSave }) => {
-  if (!open) return null;
-
   const [titulo, setTitulo] = useState("");
   const [setorId, setSetorId] = useState(SETORES_OPERACOES[0].id); // Estrutura de Funil
   const [status, setStatus] = useState<ColumnStatus>("nao_iniciado");
@@ -26,12 +24,16 @@ export const NovaTarefaModal: React.FC<NovaTarefaModalProps> = ({ open, onClose,
   const [prazo, setPrazo] = useState(() => new Date().toISOString().split("T")[0]);
 
   useEffect(() => {
-    const users = getStoredUsers();
-    setUsersList(users);
-    if (users.length > 0) {
-      setSelectedUser(users[0]);
+    if (open) {
+      const users = getStoredUsers();
+      setUsersList(users);
+      if (users.length > 0) {
+        setSelectedUser((prev) => (prev && users.some(u => u.id === prev.id) ? prev : users[0]));
+      }
     }
   }, [open]);
+
+  if (!open) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
