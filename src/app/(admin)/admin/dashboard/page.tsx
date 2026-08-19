@@ -24,7 +24,9 @@ import {
   Package,
   MessageSquare,
   PieChart as PieChartIcon,
+  ArrowRight,
 } from "lucide-react";
+import Link from "next/link";
 import {
   Demanda,
   getStoredDemandas,
@@ -36,7 +38,6 @@ import {
 } from "@/lib/demands";
 import { AppSidebar } from "@/components/AppSidebar";
 import { DemandDetailModal } from "@/components/DemandDetailModal";
-import { CreateDemandModal } from "@/components/CreateDemandModal";
 import { supabase } from "@/lib/supabase";
 import {
   BarChart,
@@ -62,7 +63,6 @@ export default function AdminDashboardPage() {
   const [setorSelecionado, setSetorSelecionado] = useState<string>("todos");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDemanda, setSelectedDemanda] = useState<Demanda | null>(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [userChecked, setUserChecked] = useState(false);
 
   useEffect(() => {
@@ -291,12 +291,12 @@ export default function AdminDashboardPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <button
-                onClick={() => setShowCreateModal(true)}
+              <Link
+                href="/operacoes"
                 className="coursue-btn-primary bg-[#5B50E5] hover:bg-[#483EA8] text-white py-3 px-6 text-sm shadow-lg shadow-[#5B50E5]/30 flex items-center gap-2"
               >
-                <Plus className="w-4 h-4" /> Publicar Nova Demanda
-              </button>
+                <Sparkles className="w-4 h-4" /> Criar Demanda na Central de Operações <ArrowRight className="w-4 h-4" />
+              </Link>
             </div>
           </div>
         </section>
@@ -897,17 +897,11 @@ export default function AdminDashboardPage() {
 
       </div>
 
-      {/* Modais */}
+      {/* Modal de Detalhes da Demanda */}
       <DemandDetailModal
         open={!!selectedDemanda}
         demanda={selectedDemanda}
         onClose={() => setSelectedDemanda(null)}
-      />
-
-      <CreateDemandModal
-        open={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onSave={handleCreateDemanda}
       />
     </div>
   );
