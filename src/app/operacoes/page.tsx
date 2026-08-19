@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -18,15 +18,21 @@ import {
   TEAM_MEMBERS,
   OperacoesSetor,
   OperacoesTarefa,
+  OperacoesProjeto,
+  ColumnStatus,
   getStoredOperacoesSetores,
   getStoredOperacoesTarefas,
+  getStoredOperacoesProjetos,
   saveStoredOperacoesSetores,
   saveStoredOperacoesTarefas,
+  saveStoredOperacoesProjetos,
   fetchOperacoesSetoresFromSupabase,
   fetchOperacoesTarefasFromSupabase,
   saveOperacoesSetorToSupabase,
   saveOperacoesTarefaToSupabase,
+  updateTarefaStatusEOrdem,
   deleteOperacoesTarefaFromSupabase,
+  recalculateProjectCounters,
 } from "@/lib/operacoesData";
 
 import { AppSidebar } from "@/components/AppSidebar";
@@ -39,6 +45,7 @@ import { NovaTarefaModal } from "@/components/operacoes/NovaTarefaModal";
 
 import { getActiveUser, fetchUsersFromSupabase, UserAccount } from "@/lib/authPermissions";
 import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 type ActiveTab = "setores" | "tarefas" | "projetos" | "performance" | "calendario";
 
@@ -48,8 +55,13 @@ export default function CentralOperacoesPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("setores");
   const [setores, setSetores] = useState<OperacoesSetor[]>([]);
   const [tarefas, setTarefas] = useState<OperacoesTarefa[]>([]);
+  const [projetos, setProjetos] = useState<OperacoesProjeto[]>([]);
   const [showNovaModal, setShowNovaModal] = useState(false);
   const [teamUsers, setTeamUsers] = useState<UserAccount[]>([]);
+
+  // Referência para rollback seguro do estado em caso de erro no drag and drop
+  const tarefasRef = useRef<OperacoesTarefa[]>([]);
+  tarefasRef.current = tarefas;
 
   useEffect(() => {
     const user = getActiveUser();
@@ -59,9 +71,7 @@ export default function CentralOperacoesPage() {
     }
     setActiveUser(user);
 
-    // Fetch remoto completo — usado apenas no mount e em eventos do Realtime do Supabase.
-    // NÃO deve ser chamado por eventos locais de localStorage, pois o Supabase pode ainda
-    // não ter confirmado o INSERT, causando race condition e sumiço de tarefas.
+    // Fetch remoto completo — usado no mount, no retorno de foco e nos canais Realtime do Supabase
     const reloadRemote = async () => {
       const [remoteUsers, remoteSetores, remoteTarefas] = await Promise.all([
         fetchUsersFromSupabase(),
@@ -71,18 +81,19 @@ export default function CentralOperacoesPage() {
       setTeamUsers(remoteUsers);
       setSetores(remoteSetores);
       setTarefas(remoteTarefas);
+      setProjetos(getStoredOperacoesProjetos());
     };
 
-    // Sync local — lê apenas do localStorage (já atualizado pelo optimistic update).
-    // Usado para eventos disparados pelo próprio browser sem precisar ir ao Supabase.
+    // Sync local rápido
     const syncFromLocalStorage = () => {
       setTarefas(getStoredOperacoesTarefas());
       setSetores(getStoredOperacoesSetores());
+      setProjetos(getStoredOperacoesProjetos());
     };
 
     reloadRemote();
 
-    // Realtime do Supabase: evento vem do servidor, então podemos buscar dados frescos
+    // Sincronização multiusuário: Realtime do Supabase
     const channelSetores = supabase
       .channel("operacoes-setores-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "operacoes_setores" }, () => {
@@ -97,15 +108,28 @@ export default function CentralOperacoesPage() {
       })
       .subscribe();
 
-    // Eventos locais: sincroniza do localStorage sem ir ao Supabase
+    // Eventos locais disparados na mesma aba
     window.addEventListener("hashira_operacoes_tarefas_updated", syncFromLocalStorage);
     window.addEventListener("hashira_operacoes_setores_updated", syncFromLocalStorage);
+    window.addEventListener("hashira_operacoes_projetos_updated", syncFromLocalStorage);
+
+    // Refetch ao focar na janela (re-sincroniza caso outro usuário tenha alterado)
+    const handleFocus = () => {
+      if (document.visibilityState === "visible") {
+        reloadRemote();
+      }
+    };
+    window.addEventListener("visibilitychange", handleFocus);
+    window.addEventListener("focus", handleFocus);
 
     return () => {
       supabase.removeChannel(channelSetores);
       supabase.removeChannel(channelTarefas);
       window.removeEventListener("hashira_operacoes_tarefas_updated", syncFromLocalStorage);
       window.removeEventListener("hashira_operacoes_setores_updated", syncFromLocalStorage);
+      window.removeEventListener("hashira_operacoes_projetos_updated", syncFromLocalStorage);
+      window.removeEventListener("visibilitychange", handleFocus);
+      window.removeEventListener("focus", handleFocus);
     };
   }, [router]);
 
@@ -121,20 +145,55 @@ export default function CentralOperacoesPage() {
     }
   };
 
-  const updateTarefas = async (novas: OperacoesTarefa[]) => {
-    setTarefas(novas);
-    saveStoredOperacoesTarefas(novas);
+  const handleSaveNovaTarefa = async (nova: OperacoesTarefa) => {
+    // 1. Navega para a aba de tarefas para exibir o resultado imediatamente
+    setActiveTab("tarefas");
+    // 2. Optimistic update
+    const novasTarefas = [nova, ...tarefas.filter((t) => t.id !== nova.id)];
+    setTarefas(novasTarefas);
+    saveStoredOperacoesTarefas(novasTarefas);
+    // 3. Salva no Supabase
+    await saveOperacoesTarefaToSupabase(nova);
   };
 
-  const handleSaveNovaTarefa = async (nova: OperacoesTarefa) => {
-    // 1. Navega para a aba antes de salvar — o kanban já mostra a tarefa via optimistic update
-    setActiveTab("tarefas");
-    // 2. Optimistic update: insere no estado local IMEDIATAMENTE
-    setTarefas((prev) => [nova, ...prev.filter((t) => t.id !== nova.id)]);
-    // 3. Persiste no Supabase + localStorage em background
-    //    O evento disparado dentro desta função lerá do localStorage (syncFromLocalStorage),
-    //    não fará novo fetch ao Supabase, mantendo a tarefa visível.
-    await saveOperacoesTarefaToSupabase(nova);
+  // Drag and Drop Handler com Atualização Otimista e Rollback em caso de erro
+  const handleMoveTarefa = async (
+    tarefaId: string,
+    novoStatus: ColumnStatus,
+    sourceIndex: number,
+    destinationIndex: number
+  ) => {
+    const previousSnapshot = [...tarefas];
+
+    // Encontra a tarefa
+    const targetTarefa = previousSnapshot.find((t) => t.id === tarefaId);
+    if (!targetTarefa) return;
+
+    // Atualiza otimisticamente a ordem e o status de todos os itens afetados
+    const tarefasAtualizadas = previousSnapshot.map((t) => {
+      if (t.id === tarefaId) {
+        return {
+          ...t,
+          status: novoStatus,
+          ordem: destinationIndex,
+        };
+      }
+      return t;
+    });
+
+    // Aplica na UI instantaneamente
+    setTarefas(tarefasAtualizadas);
+    saveStoredOperacoesTarefas(tarefasAtualizadas);
+
+    // Persiste no Supabase
+    const success = await updateTarefaStatusEOrdem(tarefaId, novoStatus, destinationIndex);
+
+    if (!success) {
+      // Rollback imediato se o backend rejeitar
+      setTarefas(previousSnapshot);
+      saveStoredOperacoesTarefas(previousSnapshot);
+      toast.error("Falha ao atualizar a tarefa no servidor. Posição restaurada.");
+    }
   };
 
   const tabs = [
@@ -175,7 +234,7 @@ export default function CentralOperacoesPage() {
                   }`}
                 >
                   {isAdmin ? <ShieldCheck className="w-3.5 h-3.5" /> : <User className="w-3.5 h-3.5" />}
-                  {isAdmin ? "Modo ADMIN (Pode alterar capa)" : "Modo COLABORADOR (Apenas visualiza)"}
+                  {isAdmin ? "Modo ADMIN" : "Modo COLABORADOR"}
                 </div>
               </div>
 
@@ -190,9 +249,7 @@ export default function CentralOperacoesPage() {
                     Central de Operações
                   </h1>
                   <p className="mt-1 text-sm text-white/80 max-w-xl">
-                    {isAdmin
-                      ? "Como ADMIN, você possui permissão exclusiva para alterar as imagens de capa das seções enviando arquivos do seu computador."
-                      : "Visão dos setores e entregas. As capas são configuradas exclusivamente pelos Administradores."}
+                    Gestão de setores, projetos e fluxo de entregas Kanban em tempo real para toda a equipe.
                   </p>
                 </div>
               </div>
@@ -220,14 +277,13 @@ export default function CentralOperacoesPage() {
                 </span>
               </div>
 
-              {isAdmin && (
-                <button
-                  onClick={() => setShowNovaModal(true)}
-                  className="coursue-btn-primary bg-[#5B50E5] hover:bg-[#483EA8] text-white py-3 px-6 text-sm shadow-lg shadow-[#5B50E5]/30 flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4" /> Nova tarefa
-                </button>
-              )}
+              {/* Botão de Nova Tarefa disponível para todos com permissão */}
+              <button
+                onClick={() => setShowNovaModal(true)}
+                className="coursue-btn-primary bg-[#5B50E5] hover:bg-[#483EA8] text-white py-3 px-6 text-sm shadow-lg shadow-[#5B50E5]/30 flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" /> Nova tarefa
+              </button>
             </div>
           </div>
         </section>
@@ -235,7 +291,7 @@ export default function CentralOperacoesPage() {
         {/* Tabs Navigation Bar */}
         <div
           className="flex p-1.5 rounded-[20px] shadow-sm overflow-x-auto no-scrollbar"
-          style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}
+          style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}
         >
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
@@ -245,18 +301,16 @@ export default function CentralOperacoesPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as ActiveTab)}
                 className={`relative flex items-center justify-center gap-2.5 px-6 py-3 rounded-full text-xs font-extrabold transition-all flex-1 min-w-[130px] ${
-                  isActive
-                    ? "bg-[#5B50E5] text-white shadow-sm"
-                    : ""
+                  isActive ? "bg-[#5B50E5] text-white shadow-sm" : ""
                 }`}
                 style={{
                   color: isActive ? "#FFFFFF" : "var(--text-secondary)",
                 }}
                 onMouseEnter={(e) => {
-                  if (!isActive) e.currentTarget.style.backgroundColor = 'var(--surface-alt)';
+                  if (!isActive) e.currentTarget.style.backgroundColor = "var(--surface-alt)";
                 }}
                 onMouseLeave={(e) => {
-                  if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
+                  if (!isActive) e.currentTarget.style.backgroundColor = "transparent";
                 }}
               >
                 <Icon className="w-4 h-4" style={{ color: isActive ? "#FFFFFF" : "var(--text-secondary)" }} />
@@ -285,9 +339,31 @@ export default function CentralOperacoesPage() {
               />
             )}
 
-            {activeTab === "tarefas" && <KanbanTarefasTab tarefas={tarefas} />}
+            {activeTab === "tarefas" && (
+              <KanbanTarefasTab
+                tarefas={tarefas}
+                projetos={projetos}
+                onMoveTarefa={handleMoveTarefa}
+              />
+            )}
 
-            {activeTab === "projetos" && <ProjetosTab />}
+            {activeTab === "projetos" && (
+              <ProjetosTab
+                projetos={projetos}
+                tarefas={tarefas}
+                setores={setores}
+                teamUsers={teamUsers}
+                currentUser={activeUser}
+                isAdmin={isAdmin}
+                onUpdateProjetos={(novos) => {
+                  setProjetos(novos);
+                  saveStoredOperacoesProjetos(novos);
+                }}
+                onNavigateToTarefas={(projId) => {
+                  setActiveTab("tarefas");
+                }}
+              />
+            )}
 
             {activeTab === "performance" && <PerformanceTab />}
 
@@ -301,6 +377,7 @@ export default function CentralOperacoesPage() {
           onClose={() => setShowNovaModal(false)}
           onSave={handleSaveNovaTarefa}
           setores={setores}
+          projetos={projetos}
         />
       </div>
     </div>

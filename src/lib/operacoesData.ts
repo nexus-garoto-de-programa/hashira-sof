@@ -1,4 +1,5 @@
 export type ColumnStatus = "nao_iniciado" | "em_andamento" | "revisao" | "concluido";
+export type PrioridadeTarefa = "baixa" | "media" | "alta" | "urgente";
 
 export interface TeamMember {
   id: string;
@@ -6,7 +7,21 @@ export interface TeamMember {
   name: string;
   color: string;
   avatarBg: string;
+  email?: string;
 }
+
+export interface KanbanColumnConfig {
+  id: ColumnStatus;
+  label: string;
+  dotColor: string;
+}
+
+export const DEFAULT_KANBAN_COLUMNS: KanbanColumnConfig[] = [
+  { id: "nao_iniciado", label: "Não iniciado", dotColor: "#8B5CF6" },
+  { id: "em_andamento", label: "Em andamento", dotColor: "#3B82F6" },
+  { id: "revisao", label: "Revisão", dotColor: "#D97706" },
+  { id: "concluido", label: "Concluído", dotColor: "#16A34A" },
+];
 
 export interface OperacoesSetor {
   id: string;
@@ -22,23 +37,34 @@ export interface OperacoesSetor {
 export interface OperacoesProjeto {
   id: string;
   nome: string;
+  descricao?: string;
   cor: string;
+  donoId?: string;
+  donoNome?: string;
+  setorId?: string;
+  setorNome?: string;
+  colunas?: KanbanColumnConfig[];
   totalTarefas: number;
   concluidas: number;
   tarefasTítulos: string[];
+  criadoEm?: string;
 }
 
 export interface OperacoesTarefa {
   id: string;
   titulo: string;
+  descricao?: string;
   setorId: string;
   setorNome: string;
   status: ColumnStatus;
+  prioridade?: PrioridadeTarefa;
+  ordem?: number;
   atrasoDias?: number;
   membro: TeamMember;
   dataEntrega: string;
   projetoId?: string;
   projetoNome?: string;
+  criadoEm?: string;
 }
 
 export interface ActivityLog {
@@ -144,9 +170,20 @@ export const SETORES_OPERACOES: OperacoesSetor[] = [
   },
 ];
 
-// Seed Inicial de Tarefas Zerada por solicitação do usuário
-export const TAREFAS_OPERACOES_SEED: OperacoesTarefa[] = [];
+export const PROJETOS_OPERACOES_SEED: OperacoesProjeto[] = [
+  {
+    id: "proj-geral",
+    nome: "Geral & Demandas Avulsas",
+    descricao: "Projeto padrão para tarefas e demandas sem projeto específico.",
+    cor: "#8B5CF6",
+    totalTarefas: 0,
+    concluidas: 0,
+    tarefasTítulos: [],
+    criadoEm: new Date().toISOString(),
+  },
+];
 
+export const TAREFAS_OPERACOES_SEED: OperacoesTarefa[] = [];
 export const ACTIVITIES_SEED: ActivityLog[] = [];
 
 const STORAGE_KEY_OPER_TAREFAS = "central_operacoes_tarefas_v4";
@@ -159,20 +196,24 @@ export function mapSupabaseRowToOperacoesTarefa(row: any): OperacoesTarefa {
   return {
     id: row.id,
     titulo: row.titulo,
+    descricao: row.descricao || "",
     setorId: row.setor_id || "sec-funil",
     setorNome: row.setor_nome || "Estrutura de Funil",
     status: row.status || "nao_iniciado",
+    prioridade: row.prioridade || "media",
+    ordem: row.ordem ?? 0,
     atrasoDias: row.atraso_dias ?? 0,
-    membro: row.membro || {
+    membro: {
       id: row.responsavel_id || "m-mh",
       initials: row.responsavel_nome ? row.responsavel_nome.substring(0, 2).toUpperCase() : "MH",
       name: row.responsavel_nome || "Matheus Henrique",
-      color: "#3B82F6",
-      avatarBg: "#3B82F6",
+      color: row.responsavel_avatar || "#3B82F6",
+      avatarBg: row.responsavel_avatar || "#3B82F6",
     },
     dataEntrega: row.prazo || new Date().toISOString().split("T")[0],
     projetoId: row.projeto_id,
     projetoNome: row.projeto_nome,
+    criadoEm: row.criado_em,
   };
 }
 
@@ -180,15 +221,15 @@ export function mapOperacoesTarefaToSupabaseRow(t: OperacoesTarefa) {
   return {
     id: t.id,
     titulo: t.titulo,
+    descricao: t.descricao,
     status: t.status,
+    prioridade: t.prioridade || "media",
     setor_id: t.setorId,
     setor_nome: t.setorNome,
     responsavel_id: t.membro?.id,
     responsavel_nome: t.membro?.name,
     responsavel_avatar: t.membro?.color,
     prazo: t.dataEntrega,
-    projeto_id: t.projetoId,
-    projeto_nome: t.projetoNome,
   };
 }
 
@@ -201,12 +242,26 @@ export async function fetchOperacoesTarefasFromSupabase(): Promise<OperacoesTare
     }
     if (data) {
       const tarefas = data.map(mapSupabaseRowToOperacoesTarefa);
+      // Mescla com dados adicionais salvos localmente (ex: projetoId, ordem)
+      const stored = getStoredOperacoesTarefas();
+      const storedMap = new Map(stored.map((t) => [t.id, t]));
+
+      const merged = tarefas.map((remoteT) => {
+        const local = storedMap.get(remoteT.id);
+        return {
+          ...remoteT,
+          projetoId: local?.projetoId || remoteT.projetoId,
+          projetoNome: local?.projetoNome || remoteT.projetoNome,
+          ordem: local?.ordem ?? remoteT.ordem ?? 0,
+        };
+      });
+
       if (typeof window !== "undefined") {
         try {
-          localStorage.setItem(STORAGE_KEY_OPER_TAREFAS, JSON.stringify(tarefas));
+          localStorage.setItem(STORAGE_KEY_OPER_TAREFAS, JSON.stringify(merged));
         } catch (e) {}
       }
-      return tarefas;
+      return merged;
     }
   } catch (e) {
     console.error("[SUPABASE ERROR] Exceção ao buscar operacoes_tarefas:", e);
@@ -228,6 +283,28 @@ export async function saveOperacoesTarefaToSupabase(tarefa: OperacoesTarefa): Pr
   const updated = [tarefa, ...current.filter((t) => t.id !== tarefa.id)];
   saveStoredOperacoesTarefas(updated);
   window.dispatchEvent(new CustomEvent("hashira_operacoes_tarefas_updated"));
+  return true;
+}
+
+export async function updateTarefaStatusEOrdem(
+  tarefaId: string,
+  novoStatus: ColumnStatus,
+  novaOrdem: number
+): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from("operacoes_tarefas")
+      .update({ status: novoStatus })
+      .eq("id", tarefaId);
+
+    if (error) {
+      console.error("[SUPABASE ERROR] Falha ao atualizar status da tarefa no Supabase:", error.message);
+      return false;
+    }
+  } catch (e) {
+    console.error("[SUPABASE ERROR] Exceção ao atualizar status da tarefa:", e);
+    return false;
+  }
   return true;
 }
 
@@ -353,21 +430,49 @@ export function saveStoredOperacoesTarefas(tarefas: OperacoesTarefa[]) {
 }
 
 export function getStoredOperacoesProjetos(): OperacoesProjeto[] {
-  if (typeof window === "undefined") return [];
+  if (typeof window === "undefined") return PROJETOS_OPERACOES_SEED;
   try {
     const raw = localStorage.getItem(STORAGE_KEY_OPER_PROJETOS);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
   } catch (e) {
     console.error("Erro ao carregar projetos da Central de Operações", e);
   }
-  return [];
+  localStorage.setItem(STORAGE_KEY_OPER_PROJETOS, JSON.stringify(PROJETOS_OPERACOES_SEED));
+  return PROJETOS_OPERACOES_SEED;
 }
 
 export function saveStoredOperacoesProjetos(projetos: OperacoesProjeto[]) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(STORAGE_KEY_OPER_PROJETOS, JSON.stringify(projetos));
+    window.dispatchEvent(new CustomEvent("hashira_operacoes_projetos_updated"));
   } catch (e) {
     console.error("Erro ao salvar projetos da Central de Operações", e);
   }
+}
+
+export function recalculateProjectCounters(
+  projetos: OperacoesProjeto[],
+  tarefas: OperacoesTarefa[]
+): OperacoesProjeto[] {
+  return projetos.map((proj) => {
+    const tarefasDoProjeto = tarefas.filter(
+      (t) => t.projetoId === proj.id || (!t.projetoId && proj.id === "proj-geral")
+    );
+    const totalTarefas = tarefasDoProjeto.length;
+    const concluidas = tarefasDoProjeto.filter((t) => t.status === "concluido").length;
+    const tarefasTítulos = tarefasDoProjeto.slice(0, 5).map((t) => t.titulo);
+
+    return {
+      ...proj,
+      totalTarefas,
+      concluidas,
+      tarefasTítulos,
+    };
+  });
 }
