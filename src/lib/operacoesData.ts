@@ -187,7 +187,6 @@ export function mapOperacoesTarefaToSupabaseRow(t: OperacoesTarefa) {
     responsavel_nome: t.membro?.name,
     responsavel_avatar: t.membro?.color,
     prazo: t.dataEntrega,
-    membro: t.membro,
     projeto_id: t.projetoId,
     projeto_nome: t.projetoNome,
   };
