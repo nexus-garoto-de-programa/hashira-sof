@@ -57,6 +57,7 @@ import {
   DEFAULT_BRANDING,
 } from "@/lib/branding";
 import { AppSidebar } from "@/components/AppSidebar";
+import { useRealtimeSubscription } from "@/lib/realtimeSync";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -131,7 +132,17 @@ function AdminConfiguracoesContent() {
     }
   }, [activeBranding]);
 
-  // Efeito 3: Autenticação e Carregamento de Dados Remotos
+  const reloadData = async () => {
+    try {
+      const remoteUsers = await fetchUsersFromSupabase();
+      setUsers(remoteUsers);
+      setSetores(getStoredSetores());
+    } catch (e) {
+      console.warn("[CONFIG WARN] Falha ao carregar dados remotos:", e);
+    }
+  };
+
+  // Efeito 3: Autenticação e Carregamento de Dados Iniciais
   useEffect(() => {
     const user = getActiveUser();
     if (!user) {
@@ -146,35 +157,15 @@ function AdminConfiguracoesContent() {
     setCurrentUser(user);
     setSimulatedRole(getAdminSimulatedRole());
     setUserChecked(true);
-
-    const reloadData = async () => {
-      try {
-        const remoteUsers = await fetchUsersFromSupabase();
-        setUsers(remoteUsers);
-        setSetores(getStoredSetores());
-      } catch (e) {
-        console.warn("[CONFIG WARN] Falha ao carregar dados remotos:", e);
-      }
-    };
-
     reloadData();
-
-    const channel = supabase
-      .channel("admin-config-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "usuarios" }, () => {
-        reloadData();
-      })
-      .subscribe();
-
-    window.addEventListener("hashira_users_updated", reloadData);
-    window.addEventListener("storage", reloadData);
-
-    return () => {
-      supabase.removeChannel(channel);
-      window.removeEventListener("hashira_users_updated", reloadData);
-      window.removeEventListener("storage", reloadData);
-    };
   }, [router]);
+
+  // Hook de Sincronização em Tempo Real (Supabase Realtime + Cross-Tab Broadcast + Window Focus + Polling)
+  useRealtimeSubscription({
+    topics: ["usuarios", "setores", "branding"],
+    onUpdate: reloadData,
+    pollIntervalMs: 8000,
+  });
 
   // File Upload Helper (converte imagem para Data URL Base64)
   const handleFileUpload = (

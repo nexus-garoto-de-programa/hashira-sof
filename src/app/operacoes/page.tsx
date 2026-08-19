@@ -45,6 +45,7 @@ import { NovaTarefaModal } from "@/components/operacoes/NovaTarefaModal";
 
 import { getActiveUser, fetchUsersFromSupabase, UserAccount } from "@/lib/authPermissions";
 import { useBranding } from "@/lib/branding";
+import { useRealtimeSubscription } from "@/lib/realtimeSync";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -65,6 +66,19 @@ export default function CentralOperacoesPage() {
   const tarefasRef = useRef<OperacoesTarefa[]>([]);
   tarefasRef.current = tarefas;
 
+  // Fetch remoto completo — usado no mount, no retorno de foco e nos canais Realtime
+  const reloadRemote = async () => {
+    const [remoteUsers, remoteSetores, remoteTarefas] = await Promise.all([
+      fetchUsersFromSupabase(),
+      fetchOperacoesSetoresFromSupabase(),
+      fetchOperacoesTarefasFromSupabase(),
+    ]);
+    setTeamUsers(remoteUsers);
+    setSetores(remoteSetores);
+    setTarefas(remoteTarefas);
+    setProjetos(getStoredOperacoesProjetos());
+  };
+
   useEffect(() => {
     const user = getActiveUser();
     if (!user) {
@@ -72,68 +86,15 @@ export default function CentralOperacoesPage() {
       return;
     }
     setActiveUser(user);
-
-    // Fetch remoto completo — usado no mount, no retorno de foco e nos canais Realtime do Supabase
-    const reloadRemote = async () => {
-      const [remoteUsers, remoteSetores, remoteTarefas] = await Promise.all([
-        fetchUsersFromSupabase(),
-        fetchOperacoesSetoresFromSupabase(),
-        fetchOperacoesTarefasFromSupabase(),
-      ]);
-      setTeamUsers(remoteUsers);
-      setSetores(remoteSetores);
-      setTarefas(remoteTarefas);
-      setProjetos(getStoredOperacoesProjetos());
-    };
-
-    // Sync local rápido
-    const syncFromLocalStorage = () => {
-      setTarefas(getStoredOperacoesTarefas());
-      setSetores(getStoredOperacoesSetores());
-      setProjetos(getStoredOperacoesProjetos());
-    };
-
     reloadRemote();
-
-    // Sincronização multiusuário: Realtime do Supabase
-    const channelSetores = supabase
-      .channel("operacoes-setores-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "operacoes_setores" }, () => {
-        reloadRemote();
-      })
-      .subscribe();
-
-    const channelTarefas = supabase
-      .channel("operacoes-tarefas-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "operacoes_tarefas" }, () => {
-        reloadRemote();
-      })
-      .subscribe();
-
-    // Eventos locais disparados na mesma aba
-    window.addEventListener("hashira_operacoes_tarefas_updated", syncFromLocalStorage);
-    window.addEventListener("hashira_operacoes_setores_updated", syncFromLocalStorage);
-    window.addEventListener("hashira_operacoes_projetos_updated", syncFromLocalStorage);
-
-    // Refetch ao focar na janela (re-sincroniza caso outro usuário tenha alterado)
-    const handleFocus = () => {
-      if (document.visibilityState === "visible") {
-        reloadRemote();
-      }
-    };
-    window.addEventListener("visibilitychange", handleFocus);
-    window.addEventListener("focus", handleFocus);
-
-    return () => {
-      supabase.removeChannel(channelSetores);
-      supabase.removeChannel(channelTarefas);
-      window.removeEventListener("hashira_operacoes_tarefas_updated", syncFromLocalStorage);
-      window.removeEventListener("hashira_operacoes_setores_updated", syncFromLocalStorage);
-      window.removeEventListener("hashira_operacoes_projetos_updated", syncFromLocalStorage);
-      window.removeEventListener("visibilitychange", handleFocus);
-      window.removeEventListener("focus", handleFocus);
-    };
   }, [router]);
+
+  // Hook de Sincronização em Tempo Real (Supabase Realtime + Cross-Tab Broadcast + Window Focus + Polling)
+  useRealtimeSubscription({
+    topics: ["tarefas", "setores", "projetos", "usuarios", "branding"],
+    onUpdate: reloadRemote,
+    pollIntervalMs: 8000,
+  });
 
   if (!activeUser) return null;
 

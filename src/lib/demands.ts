@@ -275,6 +275,8 @@ export async function fetchDemandasFromSupabase(): Promise<Demanda[]> {
   return getStoredDemandas();
 }
 
+import { notifyRealtimeChange } from "@/lib/realtimeSync";
+
 export async function saveDemandaToSupabase(demanda: Demanda): Promise<boolean> {
   try {
     // Mapeia status para operacoes_tarefas
@@ -313,6 +315,8 @@ export async function saveDemandaToSupabase(demanda: Demanda): Promise<boolean> 
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("hashira_demandas_updated"));
     window.dispatchEvent(new CustomEvent("hashira_operacoes_tarefas_updated"));
+    notifyRealtimeChange("demandas", demanda);
+    notifyRealtimeChange("tarefas", demanda);
   }
   return true;
 }
@@ -330,6 +334,8 @@ export async function deleteDemandaFromSupabase(id: string): Promise<boolean> {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("hashira_demandas_updated"));
     window.dispatchEvent(new CustomEvent("hashira_operacoes_tarefas_updated"));
+    notifyRealtimeChange("demandas", { id });
+    notifyRealtimeChange("tarefas", { id });
   }
   return true;
 }

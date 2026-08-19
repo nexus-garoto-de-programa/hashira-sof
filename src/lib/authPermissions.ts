@@ -115,6 +115,7 @@ export const USERS_SEED: UserAccount[] = [
 ];
 
 import { supabase } from "@/lib/supabase";
+import { notifyRealtimeChange } from "@/lib/realtimeSync";
 
 const STORAGE_KEY_USERS = "central_hashira_users_v2";
 const STORAGE_KEY_ACTIVE_USER = "central_hashira_active_user_v2";
@@ -332,21 +333,14 @@ export function saveStoredUsers(users: UserAccount[]) {
   if (typeof window === "undefined") return;
   try {
     const deletedList = getDeletedUsersList();
-    let currentInStore: UserAccount[] = [];
-    const raw = localStorage.getItem(STORAGE_KEY_USERS);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        currentInStore = parsed.map(normalizeUserAccount);
-      }
-    }
-
+    const currentInStore = getStoredUsers();
     const map = new Map<string, UserAccount>();
-    USERS_SEED.forEach((u) => {
-      const cleanEmail = u.email.toLowerCase().trim();
-      const cleanId = u.id.toLowerCase().trim();
+
+    USERS_SEED.forEach((seed) => {
+      const cleanEmail = seed.email.toLowerCase().trim();
+      const cleanId = seed.id.toLowerCase().trim();
       if (!deletedList.includes(cleanEmail) && !deletedList.includes(cleanId)) {
-        map.set(cleanEmail, u);
+        map.set(cleanEmail, seed);
       }
     });
 
@@ -390,6 +384,7 @@ export function saveStoredUsers(users: UserAccount[]) {
 
     // Dispara evento customizado e nativo para atualização em tempo real no front-end
     window.dispatchEvent(new CustomEvent("hashira_users_updated"));
+    notifyRealtimeChange("usuarios", deduplicated);
   } catch (e) {
     console.error("Erro ao salvar usuários de auth", e);
   }
@@ -443,6 +438,7 @@ export function deleteStoredUser(identifier: string) {
 
     // Dispara evento para atualização em tempo real no front-end
     window.dispatchEvent(new CustomEvent("hashira_users_updated"));
+    notifyRealtimeChange("usuarios", { deletedId: cleanIdent });
   } catch (e) {
     console.error("Erro ao deletar usuário", e);
   }

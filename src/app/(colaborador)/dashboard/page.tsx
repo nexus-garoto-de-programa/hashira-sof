@@ -29,6 +29,8 @@ import { PerformanceRing } from "@/components/PerformanceRing";
 import { CreateDemandModal } from "@/components/CreateDemandModal";
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
+import { useRealtimeSubscription } from "@/lib/realtimeSync";
+
 type PeriodoFilter = "dia" | "semana" | "mes";
 
 function getGreeting(): string {
@@ -49,6 +51,11 @@ export default function CollaboratorDashboardPage() {
   const [selectedDemanda, setSelectedDemanda] = useState<Demanda | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
+  const reloadDemandas = async () => {
+    const remote = await fetchDemandasFromSupabase();
+    setDemandas(remote);
+  };
+
   useEffect(() => {
     const active = getActiveUser();
     if (!active) {
@@ -56,35 +63,15 @@ export default function CollaboratorDashboardPage() {
       return;
     }
     setUser(active);
-
-    const reloadDemandas = async () => {
-      const remote = await fetchDemandasFromSupabase();
-      setDemandas(remote);
-    };
-
     reloadDemandas();
-
-    const channel = supabase
-      .channel("colaborador-dashboard-sync")
-      .on("postgres_changes", { event: "*", schema: "public", table: "operacoes_tarefas" }, () => {
-        reloadDemandas();
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "demandas" }, () => {
-        reloadDemandas();
-      })
-      .subscribe();
-
-    window.addEventListener("hashira_demandas_updated", reloadDemandas);
-    window.addEventListener("hashira_operacoes_tarefas_updated", reloadDemandas);
-    window.addEventListener("storage", reloadDemandas);
-
-    return () => {
-      supabase.removeChannel(channel);
-      window.removeEventListener("hashira_demandas_updated", reloadDemandas);
-      window.removeEventListener("hashira_operacoes_tarefas_updated", reloadDemandas);
-      window.removeEventListener("storage", reloadDemandas);
-    };
   }, [router]);
+
+  // Hook de Sincronização em Tempo Real (Supabase Realtime + Cross-Tab Broadcast + Window Focus + Polling)
+  useRealtimeSubscription({
+    topics: ["demandas", "tarefas", "usuarios", "branding"],
+    onUpdate: reloadDemandas,
+    pollIntervalMs: 8000,
+  });
 
   // Exibe demandas atribuídas ao colaborador com matching multi-critério (ID, Email, Nome Completo, Nickname e Apelido)
   const userDemandas = useMemo(() => {

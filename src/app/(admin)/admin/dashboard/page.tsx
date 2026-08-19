@@ -57,6 +57,8 @@ import { useRouter } from "next/navigation";
 import { getActiveUser } from "@/lib/authPermissions";
 import { toast } from "sonner";
 
+import { useRealtimeSubscription } from "@/lib/realtimeSync";
+
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [demandas, setDemandas] = useState<Demanda[]>([]);
@@ -64,6 +66,11 @@ export default function AdminDashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDemanda, setSelectedDemanda] = useState<Demanda | null>(null);
   const [userChecked, setUserChecked] = useState(false);
+
+  const reloadDemandas = async () => {
+    const remote = await fetchDemandasFromSupabase();
+    setDemandas(remote);
+  };
 
   useEffect(() => {
     const user = getActiveUser();
@@ -77,35 +84,15 @@ export default function AdminDashboardPage() {
       return;
     }
     setUserChecked(true);
-
-    const reloadDemandas = async () => {
-      const remote = await fetchDemandasFromSupabase();
-      setDemandas(remote);
-    };
-
     reloadDemandas();
-
-    const channel = supabase
-      .channel("admin-dashboard-sync")
-      .on("postgres_changes", { event: "*", schema: "public", table: "operacoes_tarefas" }, () => {
-        reloadDemandas();
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "demandas" }, () => {
-        reloadDemandas();
-      })
-      .subscribe();
-
-    window.addEventListener("hashira_demandas_updated", reloadDemandas);
-    window.addEventListener("hashira_operacoes_tarefas_updated", reloadDemandas);
-    window.addEventListener("storage", reloadDemandas);
-
-    return () => {
-      supabase.removeChannel(channel);
-      window.removeEventListener("hashira_demandas_updated", reloadDemandas);
-      window.removeEventListener("hashira_operacoes_tarefas_updated", reloadDemandas);
-      window.removeEventListener("storage", reloadDemandas);
-    };
   }, [router]);
+
+  // Hook de Sincronização em Tempo Real (Supabase Realtime + Cross-Tab Broadcast + Window Focus + Polling)
+  useRealtimeSubscription({
+    topics: ["demandas", "tarefas", "setores", "usuarios", "branding"],
+    onUpdate: reloadDemandas,
+    pollIntervalMs: 8000,
+  });
 
   const updateDemandas = (novas: Demanda[]) => {
     setDemandas(novas);

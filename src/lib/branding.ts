@@ -50,6 +50,8 @@ export function applyFaviconToDocument(faviconUrl: string) {
   }
 }
 
+import { notifyRealtimeChange } from "@/lib/realtimeSync";
+
 export function saveStoredBranding(branding: Partial<AppBranding>) {
   if (typeof window === "undefined") return;
   const current = getStoredBranding();
@@ -64,6 +66,7 @@ export function saveStoredBranding(branding: Partial<AppBranding>) {
       applyFaviconToDocument(updated.faviconUrl);
     }
     window.dispatchEvent(new Event("hashira_branding_updated"));
+    notifyRealtimeChange("branding", updated);
   } catch (e) {
     console.error("[BRANDING ERROR] Falha ao salvar configurações de marca:", e);
   }
@@ -75,6 +78,7 @@ export function resetBrandingToDefault() {
     localStorage.removeItem(STORAGE_KEY_BRANDING);
     applyFaviconToDocument(DEFAULT_BRANDING.faviconUrl);
     window.dispatchEvent(new Event("hashira_branding_updated"));
+    notifyRealtimeChange("branding", DEFAULT_BRANDING);
   } catch (e) {}
 }
 

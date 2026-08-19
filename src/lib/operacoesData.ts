@@ -275,6 +275,8 @@ export async function fetchOperacoesTarefasFromSupabase(): Promise<OperacoesTare
   return getStoredOperacoesTarefas();
 }
 
+import { notifyRealtimeChange } from "@/lib/realtimeSync";
+
 export async function saveOperacoesTarefaToSupabase(tarefa: OperacoesTarefa): Promise<boolean> {
   try {
     const row = mapOperacoesTarefaToSupabaseRow(tarefa);
@@ -291,6 +293,8 @@ export async function saveOperacoesTarefaToSupabase(tarefa: OperacoesTarefa): Pr
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("hashira_operacoes_tarefas_updated"));
     window.dispatchEvent(new CustomEvent("hashira_demandas_updated"));
+    notifyRealtimeChange("tarefas", tarefa);
+    notifyRealtimeChange("demandas", tarefa);
   }
   return true;
 }
@@ -318,6 +322,8 @@ export async function updateTarefaStatusEOrdem(
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("hashira_operacoes_tarefas_updated"));
     window.dispatchEvent(new CustomEvent("hashira_demandas_updated"));
+    notifyRealtimeChange("tarefas", { id: tarefaId, status: novoStatus, ordem: novaOrdem });
+    notifyRealtimeChange("demandas", { id: tarefaId, status: novoStatus });
   }
   return true;
 }
@@ -337,6 +343,8 @@ export async function deleteOperacoesTarefaFromSupabase(id: string): Promise<boo
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("hashira_operacoes_tarefas_updated"));
     window.dispatchEvent(new CustomEvent("hashira_demandas_updated"));
+    notifyRealtimeChange("tarefas", { id });
+    notifyRealtimeChange("demandas", { id });
   }
   return true;
 }
@@ -420,6 +428,7 @@ export function saveStoredOperacoesSetores(setores: OperacoesSetor[]) {
   try {
     localStorage.setItem(STORAGE_KEY_OPER_SETORES, JSON.stringify(setores));
     window.dispatchEvent(new CustomEvent("hashira_operacoes_setores_updated"));
+    notifyRealtimeChange("setores", setores);
   } catch (e) {
     console.error("Erro ao salvar setores da Central de Operações", e);
   }
@@ -441,6 +450,8 @@ export function saveStoredOperacoesTarefas(tarefas: OperacoesTarefa[]) {
   try {
     localStorage.setItem(STORAGE_KEY_OPER_TAREFAS, JSON.stringify(tarefas));
     window.dispatchEvent(new CustomEvent("hashira_operacoes_tarefas_updated"));
+    notifyRealtimeChange("tarefas", tarefas);
+    notifyRealtimeChange("demandas", tarefas);
   } catch (e) {
     console.error("Erro ao salvar tarefas da Central de Operações", e);
   }
@@ -468,6 +479,7 @@ export function saveStoredOperacoesProjetos(projetos: OperacoesProjeto[]) {
   try {
     localStorage.setItem(STORAGE_KEY_OPER_PROJETOS, JSON.stringify(projetos));
     window.dispatchEvent(new CustomEvent("hashira_operacoes_projetos_updated"));
+    notifyRealtimeChange("projetos", projetos);
   } catch (e) {
     console.error("Erro ao salvar projetos da Central de Operações", e);
   }
