@@ -118,6 +118,7 @@ export const CreateDemandModal: React.FC<CreateDemandModalProps> = ({
       criadoPor: "Administrador Central",
       colaboradorId: selectedUser.id,
       colaboradorNome: colabNomeFinal,
+      colaboradorEmail: selectedUser.email, // chave estável para matching confiável
       colaboradorAvatar: selectedUser.avatarUrl,
       prazo,
       prioridade,

@@ -81,21 +81,37 @@ export default function CollaboratorDashboardPage() {
     };
   }, [router]);
 
-  // Exibe APENAS demandas que foram explicitamente atribuídas a este colaborador (sem tarefas fantasma por setor)
+  // Exibe APENAS demandas que foram explicitamente atribuídas a este colaborador.
+  // Ordem de prioridade para o match:
+  //   1. colaboradorEmail (chave estável e única — nunca muda)
+  //   2. colaboradorId    (funciona quando os IDs estão sincronizados)
+  //   3. colaboradorNome  (último recurso, fallback de compatibilidade)
   const userDemandas = useMemo(() => {
     if (!user) return [];
 
-    const userCleanEmail = user.email ? user.email.toLowerCase().trim() : "";
-    const userCleanName = user.nome ? user.nome.toLowerCase().trim() : "";
+    const userEmail = user.email?.toLowerCase().trim() ?? "";
+    const userId = user.id;
+    const userName = user.nome?.toLowerCase().trim() ?? "";
 
     return demandas.filter((d) => {
-      const isIdMatch = Boolean(d.colaboradorId && d.colaboradorId === user.id);
+      // 1. Match por email: mais confiável — é único e não muda
+      const isEmailMatch = Boolean(
+        d.colaboradorEmail &&
+        d.colaboradorEmail.toLowerCase().trim() === userEmail
+      );
+
+      // 2. Match por ID: funciona quando os IDs estão sincronizados corretamente
+      const isIdMatch = Boolean(
+        d.colaboradorId && d.colaboradorId === userId
+      );
+
+      // 3. Match por nome: último recurso para demandas antigas sem email
       const isNameMatch = Boolean(
         d.colaboradorNome &&
-        (d.colaboradorNome.toLowerCase().trim() === userCleanName ||
-         d.colaboradorNome.toLowerCase().trim() === userCleanEmail)
+        d.colaboradorNome.toLowerCase().trim() === userName
       );
-      return isIdMatch || isNameMatch;
+
+      return isEmailMatch || isIdMatch || isNameMatch;
     });
   }, [demandas, user]);
 
@@ -187,6 +203,8 @@ export default function CollaboratorDashboardPage() {
       ...novaDemanda,
       id,
       criadoEm: new Date().toISOString(),
+      // Garante que o email do colaborador seja salvo para matching futuro
+      colaboradorEmail: novaDemanda.colaboradorEmail || user?.email,
     };
     updateDemandasState([objetoCompleto, ...demandas]);
   };

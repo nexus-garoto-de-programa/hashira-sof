@@ -50,6 +50,7 @@ export interface Demanda {
   criadoPor: string;
   colaboradorId?: string;
   colaboradorNome?: string;
+  colaboradorEmail?: string; // chave estável para matching confiável
   colaboradorAvatar?: string;
   prazo: string; // YYYY-MM-DD
   prioridade: Prioridade;
@@ -150,6 +151,7 @@ export function mapSupabaseRowToDemanda(row: any): Demanda {
     criadoPor: row.criado_por || row.criadoPor || "Administrador",
     colaboradorId: row.colaborador_id || row.colaboradorId,
     colaboradorNome: row.colaborador_nome || row.colaboradorNome,
+    colaboradorEmail: row.colaborador_email || row.colaboradorEmail,
     colaboradorAvatar: row.colaborador_avatar || row.colaboradorAvatar,
     prazo: row.prazo || new Date().toISOString().split("T")[0],
     prioridade: row.prioridade || "media",
@@ -171,6 +173,7 @@ export function mapDemandaToSupabaseRow(d: Demanda) {
     criado_por: d.criadoPor,
     colaborador_id: d.colaboradorId,
     colaborador_nome: d.colaboradorNome,
+    colaborador_email: d.colaboradorEmail,
     colaborador_avatar: d.colaboradorAvatar,
     prazo: d.prazo,
     prioridade: d.prioridade,

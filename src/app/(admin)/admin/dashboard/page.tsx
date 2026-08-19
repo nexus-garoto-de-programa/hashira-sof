@@ -164,6 +164,11 @@ export default function AdminDashboardPage() {
       id,
       criadoEm: new Date().toISOString(),
     };
+
+    // Optimistic update: atualiza o estado local IMEDIATAMENTE, sem esperar
+    // pelo fetch remoto (elimina a race condition com o Supabase)
+    setDemandas((prev) => [objetoCompleto, ...prev]);
+
     await saveDemandaToSupabase(objetoCompleto);
     toast.success("Demanda criada e atribuída com sucesso!");
   };
