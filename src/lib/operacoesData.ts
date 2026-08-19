@@ -288,7 +288,10 @@ export async function saveOperacoesTarefaToSupabase(tarefa: OperacoesTarefa): Pr
   const current = getStoredOperacoesTarefas();
   const updated = [tarefa, ...current.filter((t) => t.id !== tarefa.id)];
   saveStoredOperacoesTarefas(updated);
-  window.dispatchEvent(new CustomEvent("hashira_operacoes_tarefas_updated"));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("hashira_operacoes_tarefas_updated"));
+    window.dispatchEvent(new CustomEvent("hashira_demandas_updated"));
+  }
   return true;
 }
 
@@ -311,6 +314,11 @@ export async function updateTarefaStatusEOrdem(
     console.error("[SUPABASE ERROR] Exceção ao atualizar status da tarefa:", e);
     return false;
   }
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("hashira_operacoes_tarefas_updated"));
+    window.dispatchEvent(new CustomEvent("hashira_demandas_updated"));
+  }
   return true;
 }
 
@@ -326,7 +334,10 @@ export async function deleteOperacoesTarefaFromSupabase(id: string): Promise<boo
   const current = getStoredOperacoesTarefas();
   const updated = current.filter((t) => t.id !== id);
   saveStoredOperacoesTarefas(updated);
-  window.dispatchEvent(new CustomEvent("hashira_operacoes_tarefas_updated"));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("hashira_operacoes_tarefas_updated"));
+    window.dispatchEvent(new CustomEvent("hashira_demandas_updated"));
+  }
   return true;
 }
 

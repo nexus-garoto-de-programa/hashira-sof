@@ -141,6 +141,52 @@ const STORAGE_CLEARED_FLAG = "hashira_cascade_demandas_cleared_v3";
 
 import { supabase } from "@/lib/supabase";
 
+export function mapOperacoesRowToDemanda(row: any): Demanda {
+  let statusDemanda: StatusDemanda = "pendente";
+  let progresso = 0;
+  const s = row.status || "nao_iniciado";
+
+  if (s === "concluido") {
+    statusDemanda = "concluida";
+    progresso = 100;
+  } else if (s === "revisao") {
+    statusDemanda = "em_andamento";
+    progresso = 85;
+  } else if (s === "em_andamento") {
+    statusDemanda = "em_andamento";
+    progresso = 50;
+  } else {
+    statusDemanda = "pendente";
+    progresso = 0;
+  }
+
+  // Verifica atraso se o prazo expirou e não está concluída
+  const hojeStr = new Date().toISOString().split("T")[0];
+  if (s !== "concluido" && row.prazo && row.prazo < hojeStr) {
+    statusDemanda = "atrasada";
+  }
+
+  return {
+    id: row.id,
+    titulo: row.titulo,
+    descricao: row.descricao || "",
+    setorId: row.setor_id || "sec-funil",
+    setorNome: row.setor_nome || "Estrutura de Funil",
+    criadoPor: "Central de Operações",
+    colaboradorId: row.responsavel_id,
+    colaboradorNome: row.responsavel_nome,
+    colaboradorEmail: row.responsavel_email || undefined,
+    colaboradorAvatar: row.responsavel_avatar || undefined,
+    prazo: row.prazo || hojeStr,
+    prioridade: (row.prioridade as Prioridade) || "media",
+    status: statusDemanda,
+    progresso,
+    anexos: Array.isArray(row.anexos) ? row.anexos : [],
+    historico: Array.isArray(row.historico) ? row.historico : [],
+    criadoEm: row.criado_em || new Date().toISOString(),
+  };
+}
+
 export function mapSupabaseRowToDemanda(row: any): Demanda {
   return {
     id: row.id,
@@ -186,19 +232,42 @@ export function mapDemandaToSupabaseRow(d: Demanda) {
 
 export async function fetchDemandasFromSupabase(): Promise<Demanda[]> {
   try {
-    const { data, error } = await supabase.from("demandas").select("*");
-    if (error) {
-      console.warn("[SUPABASE WARN] Falha ao ler demandas do Supabase, usando localStorage:", error.message);
-      return getStoredDemandas();
+    // 1. Busca da tabela primária unificada 'operacoes_tarefas'
+    const { data: operData, error: operErr } = await supabase
+      .from("operacoes_tarefas")
+      .select("*")
+      .order("criado_em", { ascending: false });
+
+    // 2. Busca também da tabela legada 'demandas' para não perder registros históricos
+    const { data: legData } = await supabase.from("demandas").select("*");
+
+    const demandasMap = new Map<string, Demanda>();
+
+    // Mapeia registros legados
+    if (legData && legData.length > 0) {
+      legData.forEach((row) => {
+        const d = mapSupabaseRowToDemanda(row);
+        demandasMap.set(d.id, d);
+      });
     }
-    if (data) {
-      const demandas = data.map(mapSupabaseRowToDemanda);
+
+    // Mapeia registros da Central de Operações (prioridade mais alta)
+    if (operData && operData.length > 0) {
+      operData.forEach((row) => {
+        const d = mapOperacoesRowToDemanda(row);
+        demandasMap.set(d.id, d);
+      });
+    }
+
+    const unificadas = Array.from(demandasMap.values());
+
+    if (unificadas.length > 0) {
       if (typeof window !== "undefined") {
         try {
-          localStorage.setItem(STORAGE_KEY_DEMANDAS, JSON.stringify(demandas));
+          localStorage.setItem(STORAGE_KEY_DEMANDAS, JSON.stringify(unificadas));
         } catch (e) {}
       }
-      return demandas;
+      return unificadas;
     }
   } catch (e) {
     console.error("[SUPABASE ERROR] Exceção ao buscar demandas:", e);
@@ -208,34 +277,60 @@ export async function fetchDemandasFromSupabase(): Promise<Demanda[]> {
 
 export async function saveDemandaToSupabase(demanda: Demanda): Promise<boolean> {
   try {
+    // Mapeia status para operacoes_tarefas
+    let operStatus = "nao_iniciado";
+    if (demanda.status === "concluida") operStatus = "concluido";
+    else if (demanda.status === "em_andamento" || demanda.status === "atrasada") operStatus = "em_andamento";
+
+    // 1. Salva/Atualiza em operacoes_tarefas
+    await supabase.from("operacoes_tarefas").upsert(
+      {
+        id: demanda.id,
+        titulo: demanda.titulo,
+        descricao: demanda.descricao,
+        status: operStatus,
+        prioridade: demanda.prioridade,
+        setor_id: demanda.setorId,
+        setor_nome: demanda.setorNome,
+        responsavel_id: demanda.colaboradorId,
+        responsavel_nome: demanda.colaboradorNome,
+        responsavel_avatar: demanda.colaboradorAvatar,
+        prazo: demanda.prazo,
+      },
+      { onConflict: "id" }
+    );
+
+    // 2. Salva em demandas
     const row = mapDemandaToSupabaseRow(demanda);
-    const { error } = await supabase.from("demandas").upsert(row, { onConflict: "id" });
-    if (error) {
-      console.error("[SUPABASE ERROR] Falha ao salvar demanda no Supabase:", error.message);
-    }
+    await supabase.from("demandas").upsert(row, { onConflict: "id" });
   } catch (e) {
     console.error("[SUPABASE ERROR] Exceção ao salvar demanda:", e);
   }
+
   const current = getStoredDemandas();
   const updated = [demanda, ...current.filter((d) => d.id !== demanda.id)];
   saveStoredDemandas(updated);
-  window.dispatchEvent(new CustomEvent("hashira_demandas_updated"));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("hashira_demandas_updated"));
+    window.dispatchEvent(new CustomEvent("hashira_operacoes_tarefas_updated"));
+  }
   return true;
 }
 
 export async function deleteDemandaFromSupabase(id: string): Promise<boolean> {
   try {
-    const { error } = await supabase.from("demandas").delete().eq("id", id);
-    if (error) {
-      console.error("[SUPABASE ERROR] Falha ao deletar demanda no Supabase:", error.message);
-    }
+    await supabase.from("operacoes_tarefas").delete().eq("id", id);
+    await supabase.from("demandas").delete().eq("id", id);
   } catch (e) {
     console.error("[SUPABASE ERROR] Exceção ao deletar demanda:", e);
   }
   const current = getStoredDemandas();
   const updated = current.filter((d) => d.id !== id);
   saveStoredDemandas(updated);
-  window.dispatchEvent(new CustomEvent("hashira_demandas_updated"));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("hashira_demandas_updated"));
+    window.dispatchEvent(new CustomEvent("hashira_operacoes_tarefas_updated"));
+  }
   return true;
 }
 

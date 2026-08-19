@@ -65,53 +65,66 @@ export default function CollaboratorDashboardPage() {
     reloadDemandas();
 
     const channel = supabase
-      .channel("colaborador-dashboard-demandas")
+      .channel("colaborador-dashboard-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "operacoes_tarefas" }, () => {
+        reloadDemandas();
+      })
       .on("postgres_changes", { event: "*", schema: "public", table: "demandas" }, () => {
         reloadDemandas();
       })
       .subscribe();
 
     window.addEventListener("hashira_demandas_updated", reloadDemandas);
+    window.addEventListener("hashira_operacoes_tarefas_updated", reloadDemandas);
     window.addEventListener("storage", reloadDemandas);
 
     return () => {
       supabase.removeChannel(channel);
       window.removeEventListener("hashira_demandas_updated", reloadDemandas);
+      window.removeEventListener("hashira_operacoes_tarefas_updated", reloadDemandas);
       window.removeEventListener("storage", reloadDemandas);
     };
   }, [router]);
 
-  // Exibe APENAS demandas que foram explicitamente atribuídas a este colaborador.
-  // Ordem de prioridade para o match:
-  //   1. colaboradorEmail (chave estável e única — nunca muda)
-  //   2. colaboradorId    (funciona quando os IDs estão sincronizados)
-  //   3. colaboradorNome  (último recurso, fallback de compatibilidade)
+  // Exibe demandas atribuídas ao colaborador com matching multi-critério (ID, Email, Nome Completo, Nickname e Apelido)
   const userDemandas = useMemo(() => {
     if (!user) return [];
 
     const userEmail = user.email?.toLowerCase().trim() ?? "";
     const userId = user.id;
     const userName = user.nome?.toLowerCase().trim() ?? "";
+    const userNickname = (user.nickname || "").toLowerCase().trim();
+    const userDisplayName = (user.comoQuerSerChamado || "").toLowerCase().trim();
 
     return demandas.filter((d) => {
-      // 1. Match por email: mais confiável — é único e não muda
-      const isEmailMatch = Boolean(
-        d.colaboradorEmail &&
-        d.colaboradorEmail.toLowerCase().trim() === userEmail
-      );
+      // 1. Match por ID
+      if (d.colaboradorId && (d.colaboradorId === userId || d.colaboradorId === user.id)) {
+        return true;
+      }
 
-      // 2. Match por ID: funciona quando os IDs estão sincronizados corretamente
-      const isIdMatch = Boolean(
-        d.colaboradorId && d.colaboradorId === userId
-      );
+      // 2. Match por Email
+      if (d.colaboradorEmail && d.colaboradorEmail.toLowerCase().trim() === userEmail) {
+        return true;
+      }
 
-      // 3. Match por nome: último recurso para demandas antigas sem email
-      const isNameMatch = Boolean(
-        d.colaboradorNome &&
-        d.colaboradorNome.toLowerCase().trim() === userName
-      );
+      // 3. Match por Nome, Apelido ou Como quer ser chamado
+      if (d.colaboradorNome) {
+        const dNome = d.colaboradorNome.toLowerCase().trim();
+        if (dNome === userName || dNome === userNickname || dNome === userDisplayName) {
+          return true;
+        }
+        if (userName && (userName.includes(dNome) || dNome.includes(userName))) {
+          return true;
+        }
+        if (userDisplayName && (userDisplayName.includes(dNome) || dNome.includes(userDisplayName))) {
+          return true;
+        }
+        if (userNickname && (userNickname.includes(dNome) || dNome.includes(userNickname))) {
+          return true;
+        }
+      }
 
-      return isEmailMatch || isIdMatch || isNameMatch;
+      return false;
     });
   }, [demandas, user]);
 

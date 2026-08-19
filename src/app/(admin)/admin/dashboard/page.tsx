@@ -86,18 +86,23 @@ export default function AdminDashboardPage() {
     reloadDemandas();
 
     const channel = supabase
-      .channel("admin-dashboard-demandas")
+      .channel("admin-dashboard-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "operacoes_tarefas" }, () => {
+        reloadDemandas();
+      })
       .on("postgres_changes", { event: "*", schema: "public", table: "demandas" }, () => {
         reloadDemandas();
       })
       .subscribe();
 
     window.addEventListener("hashira_demandas_updated", reloadDemandas);
+    window.addEventListener("hashira_operacoes_tarefas_updated", reloadDemandas);
     window.addEventListener("storage", reloadDemandas);
 
     return () => {
       supabase.removeChannel(channel);
       window.removeEventListener("hashira_demandas_updated", reloadDemandas);
+      window.removeEventListener("hashira_operacoes_tarefas_updated", reloadDemandas);
       window.removeEventListener("storage", reloadDemandas);
     };
   }, [router]);
