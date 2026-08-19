@@ -65,9 +65,9 @@ type ConfigTab = "acessos" | "equipe" | "setores" | "visualizacao" | "branding";
 function AdminConfiguracoesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialTab = (searchParams.get("tab") as ConfigTab) || "acessos";
+  const [isMounted, setIsMounted] = useState(false);
+  const [activeTab, setActiveTab] = useState<ConfigTab>("acessos");
 
-  const [activeTab, setActiveTab] = useState<ConfigTab>(initialTab);
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
   const [simulatedRole, setSimulatedRole] = useState<"administrador" | "colaborador">("administrador");
   const [users, setUsers] = useState<UserAccount[]>([]);
@@ -92,18 +92,28 @@ function AdminConfiguracoesContent() {
 
   // Branding Customization State
   const activeBranding = useBranding();
-  const [brandLogo, setBrandLogo] = useState(activeBranding.logoUrl);
-  const [brandFavicon, setBrandFavicon] = useState(activeBranding.faviconUrl);
-  const [brandLoginBg, setBrandLoginBg] = useState(activeBranding.loginBgUrl);
-  const [brandNome, setBrandNome] = useState(activeBranding.nomeMarca);
-  const [brandSlogan, setBrandSlogan] = useState(activeBranding.slogan);
+  const [brandLogo, setBrandLogo] = useState(activeBranding?.logoUrl || DEFAULT_BRANDING.logoUrl);
+  const [brandFavicon, setBrandFavicon] = useState(activeBranding?.faviconUrl || DEFAULT_BRANDING.faviconUrl);
+  const [brandLoginBg, setBrandLoginBg] = useState(activeBranding?.loginBgUrl || DEFAULT_BRANDING.loginBgUrl);
+  const [brandNome, setBrandNome] = useState(activeBranding?.nomeMarca || DEFAULT_BRANDING.nomeMarca);
+  const [brandSlogan, setBrandSlogan] = useState(activeBranding?.slogan || DEFAULT_BRANDING.slogan);
 
   useEffect(() => {
-    setBrandLogo(activeBranding.logoUrl);
-    setBrandFavicon(activeBranding.faviconUrl);
-    setBrandLoginBg(activeBranding.loginBgUrl);
-    setBrandNome(activeBranding.nomeMarca);
-    setBrandSlogan(activeBranding.slogan);
+    setIsMounted(true);
+    const tabParam = searchParams?.get("tab") as ConfigTab;
+    if (tabParam && ["acessos", "equipe", "setores", "visualizacao", "branding"].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (activeBranding) {
+      setBrandLogo(activeBranding.logoUrl || DEFAULT_BRANDING.logoUrl);
+      setBrandFavicon(activeBranding.faviconUrl || DEFAULT_BRANDING.faviconUrl);
+      setBrandLoginBg(activeBranding.loginBgUrl || DEFAULT_BRANDING.loginBgUrl);
+      setBrandNome(activeBranding.nomeMarca || DEFAULT_BRANDING.nomeMarca);
+      setBrandSlogan(activeBranding.slogan || DEFAULT_BRANDING.slogan);
+    }
   }, [activeBranding]);
 
   // File Upload Helper (converte imagem para Data URL Base64)
@@ -166,9 +176,13 @@ function AdminConfiguracoesContent() {
     setUserChecked(true);
 
     const reloadData = async () => {
-      const remoteUsers = await fetchUsersFromSupabase();
-      setUsers(remoteUsers);
-      setSetores(getStoredSetores());
+      try {
+        const remoteUsers = await fetchUsersFromSupabase();
+        setUsers(remoteUsers);
+        setSetores(getStoredSetores());
+      } catch (e) {
+        console.warn("[CONFIG WARN] Falha ao carregar dados remotos:", e);
+      }
     };
 
     reloadData();
@@ -190,7 +204,19 @@ function AdminConfiguracoesContent() {
     };
   }, [router]);
 
-  if (!userChecked || !currentUser) return null;
+  if (!isMounted || !userChecked || !currentUser) {
+    return (
+      <div className="flex min-h-screen">
+        <AppSidebar />
+        <div className="flex-1 p-8 flex items-center justify-center">
+          <div className="text-xs font-bold text-[#5B50E5] flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-[#5B50E5] animate-ping" />
+            Carregando painel de configurações...
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // 1. ALTERNAR MODO DE VISUALIZAÇÃO
   const handleToggleSimulatedRole = (role: "administrador" | "colaborador") => {
@@ -208,11 +234,16 @@ function AdminConfiguracoesContent() {
     const target = users.find((u) => u.id === userId);
     if (!target) return;
 
-    const currentVal = target.permissoes[key];
+    const currentPermissoes: UserPermissions = {
+      ...(target.papel === "administrador" ? ADMIN_PERMISSIONS : DEFAULT_COLLABORATOR_PERMISSIONS),
+      ...(target.permissoes || {}),
+    };
+
+    const currentVal = currentPermissoes[key];
     const updatedUser: UserAccount = {
       ...target,
       permissoes: {
-        ...target.permissoes,
+        ...currentPermissoes,
         [key]: !currentVal,
       },
     };
@@ -460,12 +491,17 @@ function AdminConfiguracoesContent() {
                   <tbody className="divide-y divide-border">
                     {filteredUsers.map((u) => {
                       const isAdm = u.papel === "administrador" || u.email === "mhvzbusiness@gmail.com";
+                      const perms: UserPermissions = {
+                        ...(isAdm ? ADMIN_PERMISSIONS : DEFAULT_COLLABORATOR_PERMISSIONS),
+                        ...(u.permissoes || {}),
+                      };
+
                       return (
                         <tr key={u.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/40 transition-colors">
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
                               <img
-                                src={u.avatarUrl}
+                                src={u.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(u.nome)}`}
                                 alt={u.nome}
                                 className="h-9 w-9 rounded-full object-cover shrink-0 ring-1 ring-white/10"
                               />
@@ -482,7 +518,7 @@ function AdminConfiguracoesContent() {
 
                           <td className="px-6 py-4">
                             <span className="font-semibold block" style={{ color: "var(--text-primary)" }}>
-                              {u.setorNome}
+                              {u.setorNome || "Geral"}
                             </span>
                             <span
                               className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md inline-block mt-0.5 ${
@@ -498,13 +534,13 @@ function AdminConfiguracoesContent() {
                             <button
                               onClick={() => handleTogglePermission(u.id, "acessoDashboard")}
                               className={`p-2 rounded-xl transition-all ${
-                                u.permissoes.acessoDashboard
+                                perms.acessoDashboard
                                   ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                                   : "bg-gray-100 dark:bg-gray-800 text-gray-400"
                               }`}
-                              title={u.permissoes.acessoDashboard ? "Acesso liberado" : "Acesso bloqueado"}
+                              title={perms.acessoDashboard ? "Acesso liberado" : "Acesso bloqueado"}
                             >
-                              {u.permissoes.acessoDashboard ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+                              {perms.acessoDashboard ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
                             </button>
                           </td>
 
@@ -512,13 +548,13 @@ function AdminConfiguracoesContent() {
                             <button
                               onClick={() => handleTogglePermission(u.id, "acessoOperacoes")}
                               className={`p-2 rounded-xl transition-all ${
-                                u.permissoes.acessoOperacoes
+                                perms.acessoOperacoes
                                   ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                                   : "bg-gray-100 dark:bg-gray-800 text-gray-400"
                               }`}
-                              title={u.permissoes.acessoOperacoes ? "Acesso liberado" : "Acesso bloqueado"}
+                              title={perms.acessoOperacoes ? "Acesso liberado" : "Acesso bloqueado"}
                             >
-                              {u.permissoes.acessoOperacoes ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+                              {perms.acessoOperacoes ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
                             </button>
                           </td>
 
@@ -526,13 +562,13 @@ function AdminConfiguracoesContent() {
                             <button
                               onClick={() => handleTogglePermission(u.id, "acessoTarefasTab")}
                               className={`p-2 rounded-xl transition-all ${
-                                u.permissoes.acessoTarefasTab
+                                perms.acessoTarefasTab
                                   ? "bg-sky-500/15 text-sky-600 dark:text-sky-400"
                                   : "bg-gray-100 dark:bg-gray-800 text-gray-400"
                               }`}
-                              title={u.permissoes.acessoTarefasTab ? "Acesso liberado" : "Acesso bloqueado"}
+                              title={perms.acessoTarefasTab ? "Acesso liberado" : "Acesso bloqueado"}
                             >
-                              {u.permissoes.acessoTarefasTab ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+                              {perms.acessoTarefasTab ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
                             </button>
                           </td>
 
@@ -540,13 +576,13 @@ function AdminConfiguracoesContent() {
                             <button
                               onClick={() => handleTogglePermission(u.id, "acessoAdminPanorama")}
                               className={`p-2 rounded-xl transition-all ${
-                                u.permissoes.acessoAdminPanorama
+                                perms.acessoAdminPanorama
                                   ? "bg-[#5B50E5]/15 text-[#5B50E5]"
                                   : "bg-gray-100 dark:bg-gray-800 text-gray-400"
                               }`}
-                              title={u.permissoes.acessoAdminPanorama ? "Acesso liberado ao Panorama Admin" : "Sem permissão para o Panorama Admin"}
+                              title={perms.acessoAdminPanorama ? "Acesso liberado ao Panorama Admin" : "Sem permissão para o Panorama Admin"}
                             >
-                              {u.permissoes.acessoAdminPanorama ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+                              {perms.acessoAdminPanorama ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
                             </button>
                           </td>
                         </tr>
@@ -585,6 +621,7 @@ function AdminConfiguracoesContent() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {users.map((u) => {
                 const isAdm = u.papel === "administrador" || u.email === "mhvzbusiness@gmail.com";
+                const userAvatar = u.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(u.nome || "User")}`;
                 return (
                   <div
                     key={u.id}
@@ -593,13 +630,13 @@ function AdminConfiguracoesContent() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3.5 min-w-0">
                         <img
-                          src={u.avatarUrl}
-                          alt={u.nome}
+                          src={userAvatar}
+                          alt={u.nome || "Usuário"}
                           className="h-12 w-12 rounded-full object-cover shrink-0 ring-2 ring-[#5B50E5]/30"
                         />
                         <div className="min-w-0">
                           <h4 className="text-sm font-extrabold font-['Plus_Jakarta_Sans'] truncate" style={{ color: "var(--text-primary)" }}>
-                            {u.comoQuerSerChamado || u.nickname || u.nome}
+                            {u.comoQuerSerChamado || u.nickname || u.nome || "Colaborador"}
                           </h4>
                           <span className="text-[11px] block truncate" style={{ color: "var(--text-secondary)" }}>
                             {u.email}
@@ -609,7 +646,7 @@ function AdminConfiguracoesContent() {
 
                       {u.id !== currentUser.id && (
                         <button
-                          onClick={() => handleDeleteUser(u.id, u.nome)}
+                          onClick={() => handleDeleteUser(u.id, u.nome || "Usuário")}
                           className="p-2 rounded-xl text-rose-500 hover:bg-rose-500/10 transition-colors opacity-60 group-hover:opacity-100"
                           title="Remover Colaborador"
                         >
@@ -620,7 +657,7 @@ function AdminConfiguracoesContent() {
 
                     <div className="pt-3 border-t border-border flex items-center justify-between text-xs">
                       <span className="font-semibold" style={{ color: "var(--text-secondary)" }}>
-                        {u.setorNome}
+                        {u.setorNome || "Geral"}
                       </span>
                       <span
                         className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md ${
@@ -661,51 +698,50 @@ function AdminConfiguracoesContent() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {setores.map((s) => {
                 const membrosSetor = users.filter((u) => u.setorNome === s.nome || u.setoresNomes?.includes(s.nome));
+                const setorCor = s.cor || "#5B50E5";
                 return (
                   <div
                     key={s.id}
-                    className="coursue-card p-6 rounded-[24px] border border-border shadow-sm space-y-4 hover:shadow-md transition-all relative overflow-hidden group"
+                    className="coursue-card p-6 rounded-[28px] border border-border shadow-sm flex flex-col justify-between space-y-4 hover:shadow-md transition-all group"
                   >
-                    <div
-                      className="absolute top-0 left-0 right-0 h-1.5"
-                      style={{ backgroundColor: s.cor || "#5B50E5" }}
-                    />
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
                         <div
-                          className="p-3 rounded-2xl text-white shadow-md"
-                          style={{ backgroundColor: s.cor || "#5B50E5" }}
+                          className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-extrabold text-sm shadow-md"
+                          style={{ backgroundColor: setorCor }}
                         >
-                          <Layers className="w-5 h-5" />
+                          {s.nome.charAt(0)}
                         </div>
-                        <div>
-                          <h4 className="text-sm font-extrabold font-['Plus_Jakarta_Sans']" style={{ color: "var(--text-primary)" }}>
-                            {s.nome}
-                          </h4>
-                          <span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
-                            {membrosSetor.length} membro(s) vinculados
-                          </span>
-                        </div>
+                        <span className="text-[11px] font-bold text-gray-400">
+                          {membrosSetor.length} membro(s) vinculados
+                        </span>
                       </div>
-                    </div>
 
-                    <p className="text-xs leading-relaxed line-clamp-2" style={{ color: "var(--text-secondary)" }}>
-                      {s.descricao || "Departamento operacional Hashira."}
-                    </p>
+                      <h3 className="text-base font-extrabold font-['Plus_Jakarta_Sans']" style={{ color: "var(--text-primary)" }}>
+                        {s.nome}
+                      </h3>
+
+                      <p className="text-xs leading-relaxed line-clamp-2" style={{ color: "var(--text-secondary)" }}>
+                        {s.descricao || "Departamento operacional Hashira."}
+                      </p>
+                    </div>
 
                     <div className="pt-3 border-t border-border flex items-center justify-between text-xs">
                       <div className="flex items-center -space-x-2 py-0.5">
-                        {membrosSetor.slice(0, 4).map((m) => (
-                          <img
-                            key={m.id}
-                            src={m.avatarUrl}
-                            alt={m.nome}
-                            className="w-7 h-7 rounded-full object-cover shrink-0 aspect-square ring-2 ring-white dark:ring-gray-900 shadow-xs"
-                            title={m.nome}
-                          />
-                        ))}
+                        {membrosSetor.slice(0, 4).map((m) => {
+                          const memAvatar = m.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(m.nome || "Membro")}`;
+                          return (
+                            <img
+                              key={m.id}
+                              src={memAvatar}
+                              alt={m.nome || "Membro"}
+                              className="w-7 h-7 rounded-full object-cover shrink-0 aspect-square ring-2 ring-white dark:ring-gray-900 shadow-xs"
+                              title={m.nome || "Membro"}
+                            />
+                          );
+                        })}
                       </div>
-                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md" style={{ backgroundColor: (s.cor || "#5B50E5") + "20", color: s.cor || "#5B50E5" }}>
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md" style={{ backgroundColor: setorCor + "20", color: setorCor }}>
                         Ativo
                       </span>
                     </div>
