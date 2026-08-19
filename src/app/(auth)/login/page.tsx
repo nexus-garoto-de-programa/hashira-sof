@@ -5,10 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff, ShieldCheck, User, Loader2, Sparkles } from "lucide-react";
 import { getStoredUsers, fetchUsersFromSupabase, setActiveUser, UserAccount } from "@/lib/authPermissions";
+import { useBranding, DEFAULT_BRANDING } from "@/lib/branding";
 import { toast } from "sonner";
 
 export default function LoginPage() {
   const router = useRouter();
+  const branding = useBranding();
   const [activeTab, setActiveTab] = useState<"colaborador" | "administrador">("colaborador");
   
   const [email, setEmail] = useState("");
@@ -103,7 +105,7 @@ export default function LoginPage() {
         {/* Background Image with Gradient Overlay */}
         <div className="absolute inset-0 z-0">
           <img
-            src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200&auto=format&fit=crop&q=80"
+            src={branding.loginBgUrl || DEFAULT_BRANDING.loginBgUrl}
             alt="Central Hashira Operations"
             className="w-full h-full object-cover opacity-35"
           />
@@ -113,16 +115,16 @@ export default function LoginPage() {
         {/* Top Logo Container */}
         <div className="relative z-10 flex items-center gap-4">
           <img
-            src="/hashira-logo-vertical.png"
-            alt="HASHIRA OFICIAL"
-            className="h-16 w-auto object-contain drop-shadow-2xl"
+            src={branding.logoUrl || DEFAULT_BRANDING.logoUrl}
+            alt={branding.nomeMarca || "HASHIRA OFICIAL"}
+            className="h-16 w-auto max-w-[180px] object-contain drop-shadow-2xl"
           />
           <div>
             <span className="text-sm font-extrabold text-white tracking-widest uppercase block font-['Plus_Jakarta_Sans']">
-              Gestão Cascata
+              {branding.nomeMarca || "Gestão Cascata"}
             </span>
             <span className="text-xs font-bold text-[#C7C2F5] block">
-              Plataforma Oficial Hashira Sensi
+              {branding.slogan || "Plataforma Oficial Hashira Sensi"}
             </span>
           </div>
         </div>

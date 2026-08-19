@@ -21,6 +21,12 @@ import {
   CheckCircle2,
   Lock,
   Unlock,
+  Palette,
+  Upload,
+  Image as ImageIcon,
+  Globe,
+  RotateCcw,
+  Save,
 } from "lucide-react";
 import {
   getActiveUser,
@@ -42,11 +48,19 @@ import {
   getStoredSetores,
   saveStoredSetores,
 } from "@/lib/demands";
+import {
+  AppBranding,
+  getStoredBranding,
+  saveStoredBranding,
+  resetBrandingToDefault,
+  useBranding,
+  DEFAULT_BRANDING,
+} from "@/lib/branding";
 import { AppSidebar } from "@/components/AppSidebar";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
-type ConfigTab = "acessos" | "equipe" | "setores" | "visualizacao";
+type ConfigTab = "acessos" | "equipe" | "setores" | "visualizacao" | "branding";
 
 function AdminConfiguracoesContent() {
   const router = useRouter();
@@ -75,6 +89,66 @@ function AdminConfiguracoesContent() {
   const [novoSetorNome, setNovoSetorNome] = useState("");
   const [novoSetorCor, setNovoSetorCor] = useState("#5B50E5");
   const [novoSetorDescricao, setNovoSetorDescricao] = useState("");
+
+  // Branding Customization State
+  const activeBranding = useBranding();
+  const [brandLogo, setBrandLogo] = useState(activeBranding.logoUrl);
+  const [brandFavicon, setBrandFavicon] = useState(activeBranding.faviconUrl);
+  const [brandLoginBg, setBrandLoginBg] = useState(activeBranding.loginBgUrl);
+  const [brandNome, setBrandNome] = useState(activeBranding.nomeMarca);
+  const [brandSlogan, setBrandSlogan] = useState(activeBranding.slogan);
+
+  useEffect(() => {
+    setBrandLogo(activeBranding.logoUrl);
+    setBrandFavicon(activeBranding.faviconUrl);
+    setBrandLoginBg(activeBranding.loginBgUrl);
+    setBrandNome(activeBranding.nomeMarca);
+    setBrandSlogan(activeBranding.slogan);
+  }, [activeBranding]);
+
+  // File Upload Helper (converte imagem para Data URL Base64)
+  const handleFileUpload = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setter: (val: string) => void,
+    tipo: string
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/") && !file.name.endsWith(".ico")) {
+      toast.error("Por favor, selecione um arquivo de imagem válido (PNG, JPG, SVG, WebP ou ICO).");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setter(result);
+      toast.success(`${tipo} carregado com sucesso! Clique em "Salvar" para aplicar.`);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveBranding = () => {
+    saveStoredBranding({
+      logoUrl: brandLogo,
+      faviconUrl: brandFavicon,
+      loginBgUrl: brandLoginBg,
+      nomeMarca: brandNome,
+      slogan: brandSlogan,
+    });
+    toast.success("Identidade visual da aplicação atualizada com sucesso!");
+  };
+
+  const handleResetBranding = () => {
+    resetBrandingToDefault();
+    setBrandLogo(DEFAULT_BRANDING.logoUrl);
+    setBrandFavicon(DEFAULT_BRANDING.faviconUrl);
+    setBrandLoginBg(DEFAULT_BRANDING.loginBgUrl);
+    setBrandNome(DEFAULT_BRANDING.nomeMarca);
+    setBrandSlogan(DEFAULT_BRANDING.slogan);
+    toast.success("Configurações visuais restauradas para o padrão oficial.");
+  };
 
   useEffect(() => {
     const user = getActiveUser();
@@ -248,6 +322,7 @@ function AdminConfiguracoesContent() {
     { id: "acessos" as ConfigTab, label: "Gestão de Acessos", icon: ShieldCheck },
     { id: "equipe" as ConfigTab, label: "Equipe & Membros", icon: Users },
     { id: "setores" as ConfigTab, label: "Setores (Hashiras)", icon: Layers },
+    { id: "branding" as ConfigTab, label: "Identidade Visual & Logo", icon: Palette },
     { id: "visualizacao" as ConfigTab, label: "Modo de Visualização", icon: RefreshCw },
   ];
 
@@ -728,6 +803,317 @@ function AdminConfiguracoesContent() {
                 </div>
               </div>
             </div>
+          </section>
+        )}
+
+        {/* ── ABA 5: IDENTIDADE VISUAL & MARCA (LOGO, FAVICON, LOGIN) ── */}
+        {activeTab === "branding" && (
+          <section className="space-y-8 max-w-5xl">
+            {/* Header da Aba */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-extrabold font-['Plus_Jakarta_Sans']" style={{ color: "var(--text-primary)" }}>
+                  Identidade Visual & Personalização de Marca
+                </h2>
+                <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                  Customize a Logo oficial da aplicação, o Favicon da aba do navegador e o Banner de fundo da tela de login.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={handleResetBranding}
+                  className="coursue-btn-secondary py-2.5 px-4 text-xs flex items-center gap-2"
+                  title="Restaurar imagens e nomes padrão"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" /> Restaurar Padrão
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSaveBranding}
+                  className="coursue-btn-primary py-2.5 px-6 text-xs shadow-lg shadow-[#5B50E5]/30 flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" /> Salvar Identidade Visual
+                </button>
+              </div>
+            </div>
+
+            {/* Grid dos 3 Itens Visuais */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+              
+              {/* CARD 1: LOGO DA APLICAÇÃO */}
+              <div
+                className="coursue-card p-6 rounded-[28px] border border-border shadow-sm flex flex-col justify-between space-y-5"
+              >
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="p-2.5 rounded-2xl bg-[#5B50E5]/10 text-[#5B50E5]">
+                      <ImageIcon className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-[#5B50E5]/15 text-[#5B50E5]">
+                      Sidebar & Topo
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-extrabold font-['Plus_Jakarta_Sans']" style={{ color: "var(--text-primary)" }}>
+                      Logo da Aplicação
+                    </h3>
+                    <p className="text-[11px] mt-0.5" style={{ color: "var(--text-secondary)" }}>
+                      Exibida no topo da Sidebar, Central de Operações e Login.
+                    </p>
+                  </div>
+
+                  {/* Preview da Logo */}
+                  <div
+                    className="h-32 rounded-2xl p-4 flex flex-col items-center justify-center border border-dashed border-border transition-all"
+                    style={{ backgroundColor: "var(--surface-alt)" }}
+                  >
+                    <img
+                      src={brandLogo || DEFAULT_BRANDING.logoUrl}
+                      alt="Preview Logo"
+                      className="max-h-20 max-w-[180px] object-contain drop-shadow-md"
+                    />
+                  </div>
+
+                  {/* Inputs: Upload ou URL */}
+                  <div className="space-y-2.5">
+                    <div>
+                      <label className="text-[11px] font-bold uppercase tracking-wider block mb-1" style={{ color: "var(--text-primary)" }}>
+                        URL da Imagem da Logo
+                      </label>
+                      <input
+                        type="text"
+                        value={brandLogo}
+                        onChange={(e) => setBrandLogo(e.target.value)}
+                        placeholder="https://... ou /hashira-logo-vertical.png"
+                        className="coursue-input text-xs py-2"
+                      />
+                    </div>
+
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        id="upload-logo-file"
+                        className="hidden"
+                        onChange={(e) => handleFileUpload(e, setBrandLogo, "Logo da Aplicação")}
+                      />
+                      <label
+                        htmlFor="upload-logo-file"
+                        className="w-full coursue-btn-secondary text-xs py-2 px-3 cursor-pointer flex items-center justify-center gap-2 text-center"
+                      >
+                        <Upload className="w-3.5 h-3.5 text-[#5B50E5]" />
+                        Upload de Arquivo (PNG/SVG)
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* CARD 2: FAVICON DO NAVEGADOR */}
+              <div
+                className="coursue-card p-6 rounded-[28px] border border-border shadow-sm flex flex-col justify-between space-y-5"
+              >
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-600">
+                      <Globe className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-600">
+                      Aba do Navegador
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-extrabold font-['Plus_Jakarta_Sans']" style={{ color: "var(--text-primary)" }}>
+                      Favicon da Aplicação
+                    </h3>
+                    <p className="text-[11px] mt-0.5" style={{ color: "var(--text-secondary)" }}>
+                      Ícone em miniatura exibido na aba do navegador e favoritos.
+                    </p>
+                  </div>
+
+                  {/* Preview da Aba do Navegador */}
+                  <div
+                    className="h-32 rounded-2xl p-4 flex flex-col items-center justify-center border border-dashed border-border"
+                    style={{ backgroundColor: "var(--surface-alt)" }}
+                  >
+                    <div className="w-full max-w-[200px] bg-[#1E1B4B] text-white p-2.5 rounded-xl flex items-center gap-2.5 shadow-md border border-white/10">
+                      <img
+                        src={brandFavicon || DEFAULT_BRANDING.faviconUrl}
+                        alt="Favicon Preview"
+                        className="w-5 h-5 object-contain shrink-0 rounded-sm"
+                      />
+                      <span className="text-[10px] font-extrabold truncate text-white/90">
+                        {brandNome || "Central Hashira"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Inputs: Upload ou URL */}
+                  <div className="space-y-2.5">
+                    <div>
+                      <label className="text-[11px] font-bold uppercase tracking-wider block mb-1" style={{ color: "var(--text-primary)" }}>
+                        URL do Favicon (.ico / .png)
+                      </label>
+                      <input
+                        type="text"
+                        value={brandFavicon}
+                        onChange={(e) => setBrandFavicon(e.target.value)}
+                        placeholder="https://... ou /favicon.ico"
+                        className="coursue-input text-xs py-2"
+                      />
+                    </div>
+
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept="image/*,.ico"
+                        id="upload-favicon-file"
+                        className="hidden"
+                        onChange={(e) => handleFileUpload(e, setBrandFavicon, "Favicon")}
+                      />
+                      <label
+                        htmlFor="upload-favicon-file"
+                        className="w-full coursue-btn-secondary text-xs py-2 px-3 cursor-pointer flex items-center justify-center gap-2 text-center"
+                      >
+                        <Upload className="w-3.5 h-3.5 text-amber-600" />
+                        Upload Favicon (.ico / .png)
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* CARD 3: IMAGEM DA PÁGINA DE LOGIN */}
+              <div
+                className="coursue-card p-6 rounded-[28px] border border-border shadow-sm flex flex-col justify-between space-y-5"
+              >
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-600">
+                      <Sparkles className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-600">
+                      Tela de Entrada
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-extrabold font-['Plus_Jakarta_Sans']" style={{ color: "var(--text-primary)" }}>
+                      Imagem da Página de Login
+                    </h3>
+                    <p className="text-[11px] mt-0.5" style={{ color: "var(--text-secondary)" }}>
+                      Banner visual de fundo do lado esquerdo da tela de login.
+                    </p>
+                  </div>
+
+                  {/* Preview do Banner de Login */}
+                  <div
+                    className="h-32 rounded-2xl overflow-hidden relative border border-border flex items-center justify-center"
+                  >
+                    <img
+                      src={brandLoginBg || DEFAULT_BRANDING.loginBgUrl}
+                      alt="Login BG Preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#1E1B4B] via-[#1E1B4B]/60 to-transparent flex items-end p-3">
+                      <span className="text-[10px] font-extrabold text-white">
+                        Preview Tela de Login
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Inputs: Upload ou URL */}
+                  <div className="space-y-2.5">
+                    <div>
+                      <label className="text-[11px] font-bold uppercase tracking-wider block mb-1" style={{ color: "var(--text-primary)" }}>
+                        URL da Imagem de Fundo
+                      </label>
+                      <input
+                        type="text"
+                        value={brandLoginBg}
+                        onChange={(e) => setBrandLoginBg(e.target.value)}
+                        placeholder="https://images.unsplash.com/..."
+                        className="coursue-input text-xs py-2"
+                      />
+                    </div>
+
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        id="upload-loginbg-file"
+                        className="hidden"
+                        onChange={(e) => handleFileUpload(e, setBrandLoginBg, "Imagem de Login")}
+                      />
+                      <label
+                        htmlFor="upload-loginbg-file"
+                        className="w-full coursue-btn-secondary text-xs py-2 px-3 cursor-pointer flex items-center justify-center gap-2 text-center"
+                      >
+                        <Upload className="w-3.5 h-3.5 text-emerald-600" />
+                        Upload de Imagem de Login
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* CARD 4: TEXTOS DE MARCA & SLOGAN */}
+            <div
+              className="coursue-card p-6 md:p-8 rounded-[28px] border border-border shadow-sm space-y-4"
+            >
+              <div className="flex items-center gap-2.5 pb-2 border-b border-border">
+                <Settings className="w-4 h-4 text-[#5B50E5]" />
+                <h3 className="text-sm font-extrabold font-['Plus_Jakarta_Sans']" style={{ color: "var(--text-primary)" }}>
+                  Nome da Marca & Slogan da Plataforma
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider block mb-1.5" style={{ color: "var(--text-primary)" }}>
+                    Nome Principal da Marca
+                  </label>
+                  <input
+                    type="text"
+                    value={brandNome}
+                    onChange={(e) => setBrandNome(e.target.value)}
+                    placeholder="Ex: Gestão Cascata"
+                    className="coursue-input text-xs py-2.5 font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider block mb-1.5" style={{ color: "var(--text-primary)" }}>
+                    Slogan / Subtítulo
+                  </label>
+                  <input
+                    type="text"
+                    value={brandSlogan}
+                    onChange={(e) => setBrandSlogan(e.target.value)}
+                    placeholder="Ex: Central Hashira"
+                    className="coursue-input text-xs py-2.5"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleSaveBranding}
+                  className="coursue-btn-primary py-2.5 px-6 text-xs shadow-lg shadow-[#5B50E5]/30 flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" /> Salvar Alterações
+                </button>
+              </div>
+            </div>
+
           </section>
         )}
 

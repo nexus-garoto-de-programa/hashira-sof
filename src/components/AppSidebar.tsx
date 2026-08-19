@@ -27,6 +27,12 @@ import {
 import { useTheme } from "@/components/ThemeProvider";
 import { toast } from "sonner";
 
+import {
+  AppBranding,
+  useBranding,
+  DEFAULT_BRANDING,
+} from "@/lib/branding";
+
 interface AppSidebarProps {
   userRole?: "colaborador" | "administrador";
   userName?: string;
@@ -41,6 +47,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   const pathname = usePathname();
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
+  const branding = useBranding();
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
   const [simulatedRole, setSimulatedRole] = useState<"administrador" | "colaborador">("administrador");
 
@@ -116,15 +123,17 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         <div className="p-5" style={{ borderBottom: '1px solid var(--border)' }}>
           <Link href="/dashboard" className="flex items-center gap-3 group">
             <img
-              src="/hashira-logo-vertical.png"
-              alt="HASHIRA OFICIAL"
-              className="h-12 w-auto object-contain transition-transform group-hover:scale-105"
+              src={branding.logoUrl || DEFAULT_BRANDING.logoUrl}
+              alt={branding.nomeMarca || "HASHIRA OFICIAL"}
+              className="h-12 w-auto max-w-[120px] object-contain transition-transform group-hover:scale-105"
             />
             <div>
-              <span className="font-extrabold text-xs uppercase tracking-widest text-[#5B50E5] block">
-                Gestão Cascata
+              <span className="font-extrabold text-xs uppercase tracking-widest text-[#5B50E5] block truncate max-w-[110px]">
+                {branding.nomeMarca || "Gestão Cascata"}
               </span>
-              <span className="text-[10px] block" style={{ color: 'var(--text-secondary)' }}>Central Hashira</span>
+              <span className="text-[10px] block truncate max-w-[110px]" style={{ color: 'var(--text-secondary)' }}>
+                {branding.slogan || "Central Hashira"}
+              </span>
             </div>
           </Link>
         </div>

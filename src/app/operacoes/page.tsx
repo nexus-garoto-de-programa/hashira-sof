@@ -44,6 +44,7 @@ import { CalendarioTab } from "@/components/operacoes/CalendarioTab";
 import { NovaTarefaModal } from "@/components/operacoes/NovaTarefaModal";
 
 import { getActiveUser, fetchUsersFromSupabase, UserAccount } from "@/lib/authPermissions";
+import { useBranding } from "@/lib/branding";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -51,6 +52,7 @@ type ActiveTab = "setores" | "tarefas" | "projetos" | "performance" | "calendari
 
 export default function CentralOperacoesPage() {
   const router = useRouter();
+  const branding = useBranding();
   const [activeUser, setActiveUser] = useState<UserAccount | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>("setores");
   const [setores, setSetores] = useState<OperacoesSetor[]>([]);
@@ -279,9 +281,9 @@ export default function CentralOperacoesPage() {
 
               <div className="flex flex-col sm:flex-row sm:items-center gap-4 pt-1">
                 <img
-                  src="/hashira-logo-vertical.png"
-                  alt="HASHIRA OFICIAL"
-                  className="h-16 w-auto object-contain shrink-0 drop-shadow-md"
+                  src={branding.logoUrl || "/hashira-logo-vertical.png"}
+                  alt={branding.nomeMarca || "HASHIRA OFICIAL"}
+                  className="h-16 w-auto max-w-[160px] object-contain shrink-0 drop-shadow-md"
                 />
                 <div>
                   <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight font-['Plus_Jakarta_Sans']">
