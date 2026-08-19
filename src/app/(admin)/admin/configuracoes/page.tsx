@@ -619,13 +619,13 @@ function AdminConfiguracoesContent() {
                     </p>
 
                     <div className="pt-3 border-t border-border flex items-center justify-between text-xs">
-                      <div className="flex items-center -space-x-2">
+                      <div className="flex items-center -space-x-2 py-0.5">
                         {membrosSetor.slice(0, 4).map((m) => (
                           <img
                             key={m.id}
                             src={m.avatarUrl}
                             alt={m.nome}
-                            className="w-7 h-7 rounded-full object-cover ring-2 ring-white dark:ring-gray-900"
+                            className="w-7 h-7 rounded-full object-cover shrink-0 aspect-square ring-2 ring-white dark:ring-gray-900 shadow-xs"
                             title={m.nome}
                           />
                         ))}

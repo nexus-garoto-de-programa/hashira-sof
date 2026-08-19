@@ -295,9 +295,9 @@ export default function CentralOperacoesPage() {
             </div>
 
             {/* Member Avatars Stack + CTA Button */}
-            <div className="flex flex-wrap items-center gap-6">
-              <div className="flex items-center gap-2">
-                <div className="flex -space-x-2 overflow-hidden">
+            <div className="flex flex-wrap items-center gap-5">
+              <div className="flex items-center gap-2.5 bg-white/5 py-1.5 px-3 rounded-2xl border border-white/10">
+                <div className="flex items-center -space-x-2 py-0.5">
                   {teamUsers.slice(0, 5).map((u) => {
                     const displayName = u.comoQuerSerChamado || u.nickname || u.nome;
                     return (
@@ -306,13 +306,15 @@ export default function CentralOperacoesPage() {
                         src={u.avatarUrl}
                         alt={displayName}
                         title={`${displayName} (${u.setorNome})`}
-                        className="inline-block h-9 w-9 rounded-full object-cover ring-2 ring-[#1E1B4B]"
+                        className="inline-block h-8 w-8 rounded-full object-cover shrink-0 aspect-square ring-2 ring-[#1E1B4B] shadow-xs"
                       />
                     );
                   })}
                 </div>
-                <span className="text-xs font-bold text-white/80">
-                  {teamUsers.length > 5 ? `+ ${teamUsers.length - 5} membros` : `${teamUsers.length} membro(s)`}
+                <span className="text-xs font-bold text-white/90">
+                  {teamUsers.length > 5
+                    ? `+ ${teamUsers.length - 5} ${teamUsers.length - 5 === 1 ? "membro" : "membros"}`
+                    : `${teamUsers.length} ${teamUsers.length === 1 ? "membro" : "membros"}`}
                 </span>
               </div>
 

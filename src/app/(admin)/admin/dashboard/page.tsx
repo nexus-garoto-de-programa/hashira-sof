@@ -380,20 +380,20 @@ export default function AdminDashboardPage() {
 
         {/* Sector Filter Chips */}
         <section className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <label className="text-xs font-bold uppercase tracking-wider flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
               <Filter className="w-4 h-4 text-[#5B50E5]" />
               Filtrar Visão por Departamento Hashira
             </label>
-            <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-              Exibindo <strong style={{ color: 'var(--text-primary)' }}>{demandasFiltradas.length} demandas</strong>
+            <span className="text-xs shrink-0" style={{ color: 'var(--text-secondary)' }}>
+              Exibindo <strong style={{ color: 'var(--text-primary)' }}>{demandasFiltradas.length} {demandasFiltradas.length === 1 ? "demanda" : "demandas"}</strong>
             </span>
           </div>
 
-          <div className="flex gap-2.5 overflow-x-auto pb-2 no-scrollbar">
+          <div className="flex gap-2.5 overflow-x-auto pb-2.5 pt-0.5 w-full no-scrollbar">
             <button
               onClick={() => setSetorSelecionado("todos")}
-              className={`px-4 py-2 rounded-full text-xs font-bold transition-all shrink-0 flex items-center gap-2 ${
+              className={`px-4 py-2 rounded-full text-xs font-bold transition-all shrink-0 whitespace-nowrap flex items-center gap-2 ${
                 setorSelecionado === "todos"
                   ? "bg-[#1E1B4B] text-white shadow-md ring-2 ring-[#5B50E5]"
                   : "border hover:border-[#5B50E5]"
@@ -417,7 +417,7 @@ export default function AdminDashboardPage() {
                 <button
                   key={s.id}
                   onClick={() => setSetorSelecionado(s.id)}
-                  className={`px-4 py-2 rounded-full text-xs font-bold transition-all shrink-0 flex items-center gap-2 ${
+                  className={`px-4 py-2 rounded-full text-xs font-bold transition-all shrink-0 whitespace-nowrap flex items-center gap-2 ${
                     isSelected
                       ? "bg-[#5B50E5] text-white shadow-md ring-2 ring-[#5B50E5]"
                       : "border hover:border-[#5B50E5]"
