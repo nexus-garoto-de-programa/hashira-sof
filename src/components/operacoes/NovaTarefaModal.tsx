@@ -59,6 +59,7 @@ export const NovaTarefaModal: React.FC<NovaTarefaModalProps> = ({
   const [searchMember, setSearchMember] = useState("");
 
   const [prazo, setPrazo] = useState(() => new Date().toISOString().split("T")[0]);
+  const [horario, setHorario] = useState("18:00");
 
   useEffect(() => {
     if (open) {
@@ -133,6 +134,7 @@ export const NovaTarefaModal: React.FC<NovaTarefaModalProps> = ({
       atrasoDias: 0,
       membro: membroObj,
       dataEntrega: prazo,
+      horarioEntrega: horario,
       projetoId: projetoObj?.id,
       projetoNome: projetoObj?.nome,
       criadoEm: new Date().toISOString(),
@@ -270,7 +272,7 @@ export const NovaTarefaModal: React.FC<NovaTarefaModalProps> = ({
                   </select>
                 </div>
 
-                {/* Grid Duplo: Prioridade & Coluna Inicial */}
+                {/* Grid Duplo: Prioridade & Status */}
                 <div className="grid grid-cols-2 gap-3.5">
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider block mb-1.5 flex items-center gap-1" style={{ color: "var(--text-primary)" }}>
@@ -291,33 +293,48 @@ export const NovaTarefaModal: React.FC<NovaTarefaModalProps> = ({
 
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider block mb-1.5" style={{ color: "var(--text-primary)" }}>
-                      Coluna Inicial
+                      Status
                     </label>
                     <select
                       value={status}
                       onChange={(e) => setStatus(e.target.value as ColumnStatus)}
                       className="coursue-input text-xs cursor-pointer py-2.5"
                     >
-                      <option value="nao_iniciado">1. Não iniciado</option>
-                      <option value="em_andamento">2. Em andamento</option>
-                      <option value="revisao">3. Revisão</option>
-                      <option value="concluido">4. Concluído</option>
+                      <option value="nao_iniciado">Não iniciado</option>
+                      <option value="em_andamento">Em andamento</option>
+                      <option value="revisao">Revisão</option>
+                      <option value="concluido">Concluído</option>
                     </select>
                   </div>
                 </div>
 
-                {/* Prazo */}
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider block mb-1.5 flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}>
-                    <Calendar className="w-3.5 h-3.5 text-[#5B50E5]" />
-                    Data Limite de Entrega
-                  </label>
-                  <input
-                    type="date"
-                    value={prazo}
-                    onChange={(e) => setPrazo(e.target.value)}
-                    className="coursue-input text-xs cursor-pointer py-2.5"
-                  />
+                {/* Prazo: Data + Horário */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider block mb-1.5 flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}>
+                      <Calendar className="w-3.5 h-3.5 text-[#5B50E5]" />
+                      Data de Entrega
+                    </label>
+                    <input
+                      type="date"
+                      value={prazo}
+                      onChange={(e) => setPrazo(e.target.value)}
+                      className="coursue-input text-xs cursor-pointer py-2.5"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider block mb-1.5 flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}>
+                      <Calendar className="w-3.5 h-3.5 text-[#5B50E5]" />
+                      Horário Limite
+                    </label>
+                    <input
+                      type="time"
+                      value={horario}
+                      onChange={(e) => setHorario(e.target.value)}
+                      className="coursue-input text-xs cursor-pointer py-2.5"
+                    />
+                  </div>
                 </div>
               </div>
 

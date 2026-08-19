@@ -215,7 +215,10 @@ export const KanbanTarefasTab: React.FC<KanbanTarefasTabProps> = ({
 
                                 <span className="text-[10px] font-semibold flex items-center gap-1 shrink-0" style={{ color: "var(--text-muted)" }}>
                                   <Clock className="w-3 h-3 text-[#5B50E5]" />
-                                  {task.dataEntrega}
+                                  <span>
+                                    {task.dataEntrega}
+                                    {task.horarioEntrega ? ` às ${task.horarioEntrega}` : ""}
+                                  </span>
                                 </span>
                               </div>
                             </div>

@@ -62,6 +62,7 @@ export interface OperacoesTarefa {
   atrasoDias?: number;
   membro: TeamMember;
   dataEntrega: string;
+  horarioEntrega?: string;
   projetoId?: string;
   projetoNome?: string;
   criadoEm?: string;
@@ -252,6 +253,7 @@ export async function fetchOperacoesTarefasFromSupabase(): Promise<OperacoesTare
           ...remoteT,
           projetoId: local?.projetoId || remoteT.projetoId,
           projetoNome: local?.projetoNome || remoteT.projetoNome,
+          horarioEntrega: local?.horarioEntrega || remoteT.horarioEntrega,
           ordem: local?.ordem ?? remoteT.ordem ?? 0,
         };
       });
