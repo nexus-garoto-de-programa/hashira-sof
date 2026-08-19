@@ -19,8 +19,8 @@ import {
   OperacoesSetor,
   OperacoesTarefa,
   getStoredOperacoesSetores,
-  saveStoredOperacoesSetores,
   getStoredOperacoesTarefas,
+  saveStoredOperacoesSetores,
   saveStoredOperacoesTarefas,
   fetchOperacoesSetoresFromSupabase,
   fetchOperacoesTarefasFromSupabase,
@@ -59,7 +59,10 @@ export default function CentralOperacoesPage() {
     }
     setActiveUser(user);
 
-    const reloadData = async () => {
+    // Fetch remoto completo — usado apenas no mount e em eventos do Realtime do Supabase.
+    // NÃO deve ser chamado por eventos locais de localStorage, pois o Supabase pode ainda
+    // não ter confirmado o INSERT, causando race condition e sumiço de tarefas.
+    const reloadRemote = async () => {
       const [remoteUsers, remoteSetores, remoteTarefas] = await Promise.all([
         fetchUsersFromSupabase(),
         fetchOperacoesSetoresFromSupabase(),
@@ -70,32 +73,39 @@ export default function CentralOperacoesPage() {
       setTarefas(remoteTarefas);
     };
 
-    reloadData();
+    // Sync local — lê apenas do localStorage (já atualizado pelo optimistic update).
+    // Usado para eventos disparados pelo próprio browser sem precisar ir ao Supabase.
+    const syncFromLocalStorage = () => {
+      setTarefas(getStoredOperacoesTarefas());
+      setSetores(getStoredOperacoesSetores());
+    };
 
+    reloadRemote();
+
+    // Realtime do Supabase: evento vem do servidor, então podemos buscar dados frescos
     const channelSetores = supabase
       .channel("operacoes-setores-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "operacoes_setores" }, () => {
-        reloadData();
+        reloadRemote();
       })
       .subscribe();
 
     const channelTarefas = supabase
       .channel("operacoes-tarefas-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "operacoes_tarefas" }, () => {
-        reloadData();
+        reloadRemote();
       })
       .subscribe();
 
-    window.addEventListener("hashira_operacoes_setores_updated", reloadData);
-    window.addEventListener("hashira_operacoes_tarefas_updated", reloadData);
-    window.addEventListener("storage", reloadData);
+    // Eventos locais: sincroniza do localStorage sem ir ao Supabase
+    window.addEventListener("hashira_operacoes_tarefas_updated", syncFromLocalStorage);
+    window.addEventListener("hashira_operacoes_setores_updated", syncFromLocalStorage);
 
     return () => {
       supabase.removeChannel(channelSetores);
       supabase.removeChannel(channelTarefas);
-      window.removeEventListener("hashira_operacoes_setores_updated", reloadData);
-      window.removeEventListener("hashira_operacoes_tarefas_updated", reloadData);
-      window.removeEventListener("storage", reloadData);
+      window.removeEventListener("hashira_operacoes_tarefas_updated", syncFromLocalStorage);
+      window.removeEventListener("hashira_operacoes_setores_updated", syncFromLocalStorage);
     };
   }, [router]);
 
@@ -117,11 +127,14 @@ export default function CentralOperacoesPage() {
   };
 
   const handleSaveNovaTarefa = async (nova: OperacoesTarefa) => {
-    // Atualiza o estado local imediatamente (otimista) sem esperar o Realtime
-    setTarefas((prev) => [nova, ...prev.filter((t) => t.id !== nova.id)]);
-    await saveOperacoesTarefaToSupabase(nova);
-    // Navega para a aba de tarefas para mostrar o resultado
+    // 1. Navega para a aba antes de salvar — o kanban já mostra a tarefa via optimistic update
     setActiveTab("tarefas");
+    // 2. Optimistic update: insere no estado local IMEDIATAMENTE
+    setTarefas((prev) => [nova, ...prev.filter((t) => t.id !== nova.id)]);
+    // 3. Persiste no Supabase + localStorage em background
+    //    O evento disparado dentro desta função lerá do localStorage (syncFromLocalStorage),
+    //    não fará novo fetch ao Supabase, mantendo a tarefa visível.
+    await saveOperacoesTarefaToSupabase(nova);
   };
 
   const tabs = [
