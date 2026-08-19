@@ -15,6 +15,7 @@ import {
   RefreshCw,
   Sun,
   Moon,
+  Settings,
 } from "lucide-react";
 import {
   getActiveUser,
@@ -96,9 +97,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     ...(activeRoleView === "administrador"
       ? [
           { href: "/admin/dashboard", label: "Painel Admin", icon: LayoutDashboard },
-          { href: "/admin/setores", label: "Setores (Hashiras)", icon: Layers },
-          { href: "/admin/colaboradores", label: "Equipe", icon: Users },
-          { href: "/admin/permissoes", label: "Gestão de Acessos", icon: ShieldCheck },
+          { href: "/admin/configuracoes", label: "Configurações", icon: Settings },
         ]
       : []),
   ];
