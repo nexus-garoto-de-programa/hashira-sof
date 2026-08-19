@@ -8,7 +8,13 @@ import { OperacoesTarefa, OperacoesProjeto, ColumnStatus, DEFAULT_KANBAN_COLUMNS
 interface KanbanTarefasTabProps {
   tarefas: OperacoesTarefa[];
   projetos?: OperacoesProjeto[];
-  onMoveTarefa?: (tarefaId: string, novoStatus: ColumnStatus, sourceIndex: number, destinationIndex: number) => Promise<any> | void;
+  onMoveTarefa?: (
+    tarefaId: string,
+    destStatus: ColumnStatus,
+    sourceStatus: ColumnStatus,
+    sourceIndex: number,
+    destinationIndex: number
+  ) => Promise<any> | void;
 }
 
 export const KanbanTarefasTab: React.FC<KanbanTarefasTabProps> = ({
@@ -34,9 +40,11 @@ export const KanbanTarefasTab: React.FC<KanbanTarefasTabProps> = ({
       return;
     }
 
-    const novoStatus = destination.droppableId as ColumnStatus;
+    const destStatus = destination.droppableId as ColumnStatus;
+    const sourceStatus = source.droppableId as ColumnStatus;
+
     if (onMoveTarefa) {
-      await onMoveTarefa(draggableId, novoStatus, source.index, destination.index);
+      await onMoveTarefa(draggableId, destStatus, sourceStatus, source.index, destination.index);
     }
   };
 
@@ -114,9 +122,10 @@ export const KanbanTarefasTab: React.FC<KanbanTarefasTabProps> = ({
                             <div
                               ref={providedDrag.innerRef}
                               {...providedDrag.draggableProps}
+                              {...providedDrag.dragHandleProps}
                               className={`p-4 rounded-[18px] transition-all space-y-3 shadow-xs hover:shadow-md cursor-grab active:cursor-grabbing border ${
                                 snapshotDrag.isDragging
-                                  ? "shadow-2xl ring-2 ring-[#5B50E5] scale-105 opacity-95 z-50"
+                                  ? "shadow-2xl ring-2 ring-[#5B50E5] scale-105 opacity-95 z-50 bg-[#1E1B4B]"
                                   : ""
                               }`}
                               style={{
@@ -145,7 +154,7 @@ export const KanbanTarefasTab: React.FC<KanbanTarefasTabProps> = ({
                                   </span>
                                 )}
 
-                                <div {...providedDrag.dragHandleProps} className="text-gray-400 hover:text-gray-600 p-1" title="Arrastar">
+                                <div className="text-gray-400 hover:text-gray-600 p-1" title="Arrastar">
                                   <GripVertical className="w-3.5 h-3.5" />
                                 </div>
                               </div>
@@ -198,16 +207,24 @@ export const KanbanTarefasTab: React.FC<KanbanTarefasTabProps> = ({
                                 ) : null}
                               </div>
 
-                              {/* Card Footer: Responsável + Prazo */}
+                              {/* Card Footer: Responsável com Foto + Prazo */}
                               <div className="pt-2.5 flex items-center justify-between text-xs" style={{ borderTop: "1px solid var(--border)" }}>
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                  <div
-                                    className="h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-extrabold text-white shadow-xs shrink-0"
-                                    style={{ backgroundColor: task.membro?.avatarBg || "#5B50E5" }}
-                                    title={task.membro?.name}
-                                  >
-                                    {task.membro?.initials || "US"}
-                                  </div>
+                                <div className="flex items-center gap-2 min-w-0">
+                                  {task.membro?.avatarUrl ? (
+                                    <img
+                                      src={task.membro.avatarUrl}
+                                      alt={task.membro.name}
+                                      className="h-6 w-6 rounded-full object-cover shrink-0 ring-1 ring-white/20 shadow-xs"
+                                    />
+                                  ) : (
+                                    <div
+                                      className="h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-extrabold text-white shadow-xs shrink-0"
+                                      style={{ backgroundColor: task.membro?.avatarBg || "#5B50E5" }}
+                                      title={task.membro?.name}
+                                    >
+                                      {task.membro?.initials || "US"}
+                                    </div>
+                                  )}
                                   <span className="text-[11px] font-semibold truncate max-w-[100px]" style={{ color: "var(--text-secondary)" }}>
                                     {task.membro?.name}
                                   </span>
@@ -248,3 +265,4 @@ export const KanbanTarefasTab: React.FC<KanbanTarefasTabProps> = ({
     </DragDropContext>
   );
 };
+

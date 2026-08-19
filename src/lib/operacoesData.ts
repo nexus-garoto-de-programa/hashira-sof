@@ -7,6 +7,7 @@ export interface TeamMember {
   name: string;
   color: string;
   avatarBg: string;
+  avatarUrl?: string;
   email?: string;
 }
 
@@ -194,6 +195,8 @@ const STORAGE_KEY_OPER_SETORES = "central_operacoes_setores_v4";
 import { supabase } from "@/lib/supabase";
 
 export function mapSupabaseRowToOperacoesTarefa(row: any): OperacoesTarefa {
+  const isUrlAvatar = typeof row.responsavel_avatar === "string" && (row.responsavel_avatar.startsWith("http") || row.responsavel_avatar.startsWith("data:") || row.responsavel_avatar.startsWith("/"));
+
   return {
     id: row.id,
     titulo: row.titulo,
@@ -208,8 +211,9 @@ export function mapSupabaseRowToOperacoesTarefa(row: any): OperacoesTarefa {
       id: row.responsavel_id || "m-mh",
       initials: row.responsavel_nome ? row.responsavel_nome.substring(0, 2).toUpperCase() : "MH",
       name: row.responsavel_nome || "Matheus Henrique",
-      color: row.responsavel_avatar || "#3B82F6",
-      avatarBg: row.responsavel_avatar || "#3B82F6",
+      color: isUrlAvatar ? "#5B50E5" : row.responsavel_avatar || "#3B82F6",
+      avatarBg: isUrlAvatar ? "#5B50E5" : row.responsavel_avatar || "#3B82F6",
+      avatarUrl: isUrlAvatar ? row.responsavel_avatar : undefined,
     },
     dataEntrega: row.prazo || new Date().toISOString().split("T")[0],
     projetoId: row.projeto_id,
@@ -229,7 +233,7 @@ export function mapOperacoesTarefaToSupabaseRow(t: OperacoesTarefa) {
     setor_nome: t.setorNome,
     responsavel_id: t.membro?.id,
     responsavel_nome: t.membro?.name,
-    responsavel_avatar: t.membro?.color,
+    responsavel_avatar: t.membro?.avatarUrl || t.membro?.color || "#5B50E5",
     prazo: t.dataEntrega,
   };
 }

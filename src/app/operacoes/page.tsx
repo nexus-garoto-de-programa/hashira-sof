@@ -156,10 +156,11 @@ export default function CentralOperacoesPage() {
     await saveOperacoesTarefaToSupabase(nova);
   };
 
-  // Drag and Drop Handler com Atualização Otimista e Rollback em caso de erro
+  // Drag and Drop Handler com Reordenação Exata, Atualização Otimista e Rollback em caso de erro
   const handleMoveTarefa = async (
     tarefaId: string,
-    novoStatus: ColumnStatus,
+    destStatus: ColumnStatus,
+    sourceStatus: ColumnStatus,
     sourceIndex: number,
     destinationIndex: number
   ) => {
@@ -169,24 +170,62 @@ export default function CentralOperacoesPage() {
     const targetTarefa = previousSnapshot.find((t) => t.id === tarefaId);
     if (!targetTarefa) return;
 
-    // Atualiza otimisticamente a ordem e o status de todos os itens afetados
+    // 1. Clona as listas por coluna ordenadas
+    const sourceList = previousSnapshot
+      .filter((t) => t.status === sourceStatus)
+      .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+
+    const destList =
+      sourceStatus === destStatus
+        ? sourceList
+        : previousSnapshot
+            .filter((t) => t.status === destStatus)
+            .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+
+    // 2. Remove da lista de origem
+    const [movedItem] = sourceList.splice(sourceIndex, 1);
+    if (!movedItem) return;
+
+    const itemComNovoStatus = { ...movedItem, status: destStatus };
+
+    // 3. Insere na lista de destino
+    if (sourceStatus === destStatus) {
+      sourceList.splice(destinationIndex, 0, itemComNovoStatus);
+    } else {
+      destList.splice(destinationIndex, 0, itemComNovoStatus);
+    }
+
+    // 4. Reindexa com ordem crescente contínua (0, 1, 2, ...)
+    const orderMap = new Map<string, { status: ColumnStatus; ordem: number }>();
+    sourceList.forEach((t, idx) => {
+      orderMap.set(t.id, { status: sourceStatus, ordem: idx });
+    });
+
+    if (sourceStatus !== destStatus) {
+      destList.forEach((t, idx) => {
+        orderMap.set(t.id, { status: destStatus, ordem: idx });
+      });
+    }
+
+    // 5. Monta o estado final completo
     const tarefasAtualizadas = previousSnapshot.map((t) => {
-      if (t.id === tarefaId) {
+      const updatedInfo = orderMap.get(t.id);
+      if (updatedInfo) {
         return {
           ...t,
-          status: novoStatus,
-          ordem: destinationIndex,
+          status: updatedInfo.status,
+          ordem: updatedInfo.ordem,
         };
       }
       return t;
     });
 
-    // Aplica na UI instantaneamente
+    // 6. Aplica na UI instantaneamente
     setTarefas(tarefasAtualizadas);
     saveStoredOperacoesTarefas(tarefasAtualizadas);
 
-    // Persiste no Supabase
-    const success = await updateTarefaStatusEOrdem(tarefaId, novoStatus, destinationIndex);
+    // 7. Persiste no Supabase
+    const success = await updateTarefaStatusEOrdem(tarefaId, destStatus, destinationIndex);
 
     if (!success) {
       // Rollback imediato se o backend rejeitar

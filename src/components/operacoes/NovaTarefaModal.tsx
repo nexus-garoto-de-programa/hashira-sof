@@ -119,6 +119,7 @@ export const NovaTarefaModal: React.FC<NovaTarefaModalProps> = ({
       initials: initials || "US",
       color: "#5B50E5",
       avatarBg: "#5B50E5",
+      avatarUrl: selectedUser.avatarUrl,
       email: selectedUser.email,
     };
 
