@@ -98,6 +98,20 @@ function AdminConfiguracoesContent() {
   const [brandNome, setBrandNome] = useState(activeBranding?.nomeMarca || DEFAULT_BRANDING.nomeMarca);
   const [brandSlogan, setBrandSlogan] = useState(activeBranding?.slogan || DEFAULT_BRANDING.slogan);
 
+  // Filtro de usuários (useMemo no topo, antes de qualquer early return)
+  const filteredUsers = useMemo(() => {
+    if (!searchQuery.trim()) return users;
+    const q = searchQuery.toLowerCase().trim();
+    return users.filter(
+      (u) =>
+        u.nome?.toLowerCase().includes(q) ||
+        u.email?.toLowerCase().includes(q) ||
+        u.setorNome?.toLowerCase().includes(q) ||
+        u.comoQuerSerChamado?.toLowerCase().includes(q)
+    );
+  }, [users, searchQuery]);
+
+  // Efeito 1: Montagem e Sincronização da Aba via URL
   useEffect(() => {
     setIsMounted(true);
     const tabParam = searchParams?.get("tab") as ConfigTab;
@@ -106,6 +120,7 @@ function AdminConfiguracoesContent() {
     }
   }, [searchParams]);
 
+  // Efeito 2: Sincronização de Branding
   useEffect(() => {
     if (activeBranding) {
       setBrandLogo(activeBranding.logoUrl || DEFAULT_BRANDING.logoUrl);
@@ -116,50 +131,7 @@ function AdminConfiguracoesContent() {
     }
   }, [activeBranding]);
 
-  // File Upload Helper (converte imagem para Data URL Base64)
-  const handleFileUpload = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    setter: (val: string) => void,
-    tipo: string
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/") && !file.name.endsWith(".ico")) {
-      toast.error("Por favor, selecione um arquivo de imagem válido (PNG, JPG, SVG, WebP ou ICO).");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setter(result);
-      toast.success(`${tipo} carregado com sucesso! Clique em "Salvar" para aplicar.`);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleSaveBranding = () => {
-    saveStoredBranding({
-      logoUrl: brandLogo,
-      faviconUrl: brandFavicon,
-      loginBgUrl: brandLoginBg,
-      nomeMarca: brandNome,
-      slogan: brandSlogan,
-    });
-    toast.success("Identidade visual da aplicação atualizada com sucesso!");
-  };
-
-  const handleResetBranding = () => {
-    resetBrandingToDefault();
-    setBrandLogo(DEFAULT_BRANDING.logoUrl);
-    setBrandFavicon(DEFAULT_BRANDING.faviconUrl);
-    setBrandLoginBg(DEFAULT_BRANDING.loginBgUrl);
-    setBrandNome(DEFAULT_BRANDING.nomeMarca);
-    setBrandSlogan(DEFAULT_BRANDING.slogan);
-    toast.success("Configurações visuais restauradas para o padrão oficial.");
-  };
-
+  // Efeito 3: Autenticação e Carregamento de Dados Remotos
   useEffect(() => {
     const user = getActiveUser();
     if (!user) {
@@ -204,19 +176,49 @@ function AdminConfiguracoesContent() {
     };
   }, [router]);
 
-  if (!isMounted || !userChecked || !currentUser) {
-    return (
-      <div className="flex min-h-screen">
-        <AppSidebar />
-        <div className="flex-1 p-8 flex items-center justify-center">
-          <div className="text-xs font-bold text-[#5B50E5] flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-[#5B50E5] animate-ping" />
-            Carregando painel de configurações...
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // File Upload Helper (converte imagem para Data URL Base64)
+  const handleFileUpload = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setter: (val: string) => void,
+    tipo: string
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/") && !file.name.endsWith(".ico")) {
+      toast.error("Por favor, selecione um arquivo de imagem válido (PNG, JPG, SVG, WebP ou ICO).");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setter(result);
+      toast.success(`${tipo} carregado com sucesso! Clique em "Salvar" para aplicar.`);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveBranding = () => {
+    saveStoredBranding({
+      logoUrl: brandLogo,
+      faviconUrl: brandFavicon,
+      loginBgUrl: brandLoginBg,
+      nomeMarca: brandNome,
+      slogan: brandSlogan,
+    });
+    toast.success("Identidade visual da aplicação atualizada com sucesso!");
+  };
+
+  const handleResetBranding = () => {
+    resetBrandingToDefault();
+    setBrandLogo(DEFAULT_BRANDING.logoUrl);
+    setBrandFavicon(DEFAULT_BRANDING.faviconUrl);
+    setBrandLoginBg(DEFAULT_BRANDING.loginBgUrl);
+    setBrandNome(DEFAULT_BRANDING.nomeMarca);
+    setBrandSlogan(DEFAULT_BRANDING.slogan);
+    toast.success("Configurações visuais restauradas para o padrão oficial.");
+  };
 
   // 1. ALTERNAR MODO DE VISUALIZAÇÃO
   const handleToggleSimulatedRole = (role: "administrador" | "colaborador") => {
@@ -295,7 +297,7 @@ function AdminConfiguracoesContent() {
 
   // 4. EXCLUIR USUÁRIO
   const handleDeleteUser = async (userId: string, userNome: string) => {
-    if (userId === currentUser.id) {
+    if (userId === currentUser?.id) {
       toast.error("Você não pode excluir sua própria conta de administrador.");
       return;
     }
@@ -336,18 +338,20 @@ function AdminConfiguracoesContent() {
     setShowAddSetorModal(false);
   };
 
-  // Filtro de usuários
-  const filteredUsers = useMemo(() => {
-    if (!searchQuery.trim()) return users;
-    const q = searchQuery.toLowerCase().trim();
-    return users.filter(
-      (u) =>
-        u.nome.toLowerCase().includes(q) ||
-        u.email.toLowerCase().includes(q) ||
-        u.setorNome?.toLowerCase().includes(q) ||
-        u.comoQuerSerChamado?.toLowerCase().includes(q)
+  // Renderização Condicional SOMENTE APÓS todos os hooks e handlers declarados
+  if (!isMounted || !userChecked || !currentUser) {
+    return (
+      <div className="flex min-h-screen">
+        <AppSidebar />
+        <div className="flex-1 p-8 flex items-center justify-center">
+          <div className="text-xs font-bold text-[#5B50E5] flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-[#5B50E5] animate-ping" />
+            Carregando painel de configurações...
+          </div>
+        </div>
+      </div>
     );
-  }, [users, searchQuery]);
+  }
 
   const tabs = [
     { id: "acessos" as ConfigTab, label: "Gestão de Acessos", icon: ShieldCheck },
