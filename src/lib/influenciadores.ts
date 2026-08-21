@@ -7,10 +7,53 @@ import { notifyRealtimeChange } from "@/lib/realtimeSync";
 
 export interface LinkCheckout {
   id: string;
-  nome: string;   // ex: "Produto X - Oferta Principal"
-  url: string;    // link Lastlink
+  categoriaId?: string; // ex: "vip", "pack_completo", "sensi_permanente"
+  subItemId?: string;   // ex: "android", "iphone", "emulador", "link_unico"
+  nome: string;         // ex: "ANDROID", "IPHONE", "EMULADOR", "LINK ÚNICO"
+  url: string;          // link Lastlink
   ativo: boolean;
 }
+
+export interface SubItemCheckoutConfig {
+  id: string;
+  label: string;
+}
+
+export interface CategoriaCheckoutConfig {
+  id: string;
+  titulo: string;
+  icone: string;
+  subItems: SubItemCheckoutConfig[];
+}
+
+export const CATEGORIAS_CHECKOUT_PREDEFINIDAS: CategoriaCheckoutConfig[] = [
+  {
+    id: "vip",
+    titulo: "VIP",
+    icone: "💛",
+    subItems: [
+      { id: "android", label: "ANDROID" },
+      { id: "iphone", label: "IPHONE" },
+      { id: "emulador", label: "EMULADOR" },
+    ],
+  },
+  {
+    id: "pack_completo",
+    titulo: "Pack Completo",
+    icone: "💛",
+    subItems: [
+      { id: "link_unico", label: "LINK ÚNICO" },
+    ],
+  },
+  {
+    id: "sensi_permanente",
+    titulo: "Sensi Permanente",
+    icone: "💛",
+    subItems: [
+      { id: "link_unico", label: "LINK ÚNICO" },
+    ],
+  },
+];
 
 export interface Influenciador {
   id: string;
@@ -314,4 +357,47 @@ export function removeLinkCheckout(inf: Influenciador, linkId: string): Influenc
     ...inf,
     linksCheckout: inf.linksCheckout.filter((l) => l.id !== linkId),
   };
+}
+
+export function upsertLinkCheckoutCategoria(
+  inf: Influenciador,
+  categoriaId: string,
+  subItemId: string,
+  nome: string,
+  url: string
+): Influenciador {
+  const current = inf.linksCheckout;
+  const index = current.findIndex(
+    (l) => l.categoriaId === categoriaId && l.subItemId === subItemId
+  );
+
+  let updatedLinks: LinkCheckout[];
+
+  if (index >= 0) {
+    if (!url.trim()) {
+      // Se URL for vazia, remove o link
+      updatedLinks = current.filter((_, i) => i !== index);
+    } else {
+      updatedLinks = [...current];
+      updatedLinks[index] = {
+        ...updatedLinks[index],
+        nome: nome.trim(),
+        url: url.trim(),
+        ativo: true,
+      };
+    }
+  } else {
+    if (!url.trim()) return inf;
+    const novo: LinkCheckout = {
+      id: `lc_${categoriaId}_${subItemId}_${Date.now()}`,
+      categoriaId,
+      subItemId,
+      nome: nome.trim(),
+      url: url.trim(),
+      ativo: true,
+    };
+    updatedLinks = [...current, novo];
+  }
+
+  return { ...inf, linksCheckout: updatedLinks };
 }

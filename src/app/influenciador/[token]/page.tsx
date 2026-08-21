@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { fetchInfluenciadorByToken, generateUTMLinks, generateArvoreLinks, getArvoreRaiz, Influenciador } from "@/lib/influenciadores";
 import { UTMLinkBlock } from "@/components/influenciadores/UTMLinkBlock";
 import { ArvoreLinks } from "@/components/influenciadores/ArvoreLinks";
+import { CheckoutCategoriasView } from "@/components/influenciadores/CheckoutCategoriasView";
 import { Copy, Check, ExternalLink, ShoppingCart } from "lucide-react";
 
 function CopyButton({ text }: { text: string }) {
@@ -136,46 +137,17 @@ export default function InfluenciadorPublicPage() {
         </section>
 
         {/* Checkout */}
-        {checkoutsAtivos.length > 0 && (
-          <section className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="w-1 h-5 rounded-full bg-emerald-500" />
-              <h2 className="text-base font-extrabold">Links de Checkout</h2>
-            </div>
-            <div className="space-y-2.5">
-              {checkoutsAtivos.map((link) => (
-                <div
-                  key={link.id}
-                  className="flex items-center justify-between gap-3 rounded-2xl p-4"
-                  style={{
-                    backgroundColor: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                  }}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <ShoppingCart className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold truncate">{link.nome}</p>
-                      <p className="text-[11px] font-mono text-white/40 truncate">{link.url}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <CopyButton text={link.url} />
-                    <a
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-1.5 rounded-lg"
-                      style={{ backgroundColor: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)" }}
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="w-1 h-5 rounded-full bg-amber-500" />
+            <h2 className="text-base font-extrabold">Links de Checkout</h2>
+          </div>
+          <CheckoutCategoriasView
+            influenciador={influenciador}
+            onSaveInfluenciador={async () => {}}
+            somenteLeitura={true}
+          />
+        </section>
 
         {/* Árvore de Links */}
         <section className="space-y-4">

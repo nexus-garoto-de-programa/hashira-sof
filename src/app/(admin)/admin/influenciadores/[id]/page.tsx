@@ -36,6 +36,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { UTMLinkBlock } from "@/components/influenciadores/UTMLinkBlock";
 import { LinkCheckoutItem } from "@/components/influenciadores/LinkCheckoutItem";
 import { ArvoreLinks } from "@/components/influenciadores/ArvoreLinks";
+import { CheckoutCategoriasView } from "@/components/influenciadores/CheckoutCategoriasView";
 import { useRealtimeSubscription } from "@/lib/realtimeSync";
 import { getActiveUser } from "@/lib/authPermissions";
 import { toast } from "sonner";
@@ -380,103 +381,10 @@ export default function InfluenciadorDetailPage() {
 
               {/* ── ABA CHECKOUT ── */}
               {activeTab === "checkout" && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
-                      Links de Checkout ({influenciador.linksCheckout.length})
-                    </p>
-                    <button
-                      onClick={() => setShowAddCheckout(true)}
-                      className="coursue-btn-primary py-2 px-4 text-xs flex items-center gap-1.5"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Adicionar Link
-                    </button>
-                  </div>
-
-                  {/* Form novo checkout */}
-                  <AnimatePresence>
-                    {showAddCheckout && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="overflow-hidden"
-                      >
-                        <div
-                          className="rounded-2xl p-5 space-y-4"
-                          style={{
-                            backgroundColor: "var(--surface)",
-                            border: "2px solid #5B50E5",
-                          }}
-                        >
-                          <p className="text-xs font-bold text-[#5B50E5]">Novo Link de Checkout</p>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                              <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
-                                Nome / Identificação
-                              </label>
-                              <input
-                                type="text"
-                                value={novoCheckoutNome}
-                                onChange={(e) => setNovoCheckoutNome(e.target.value)}
-                                placeholder="Ex: Produto X - Oferta Principal"
-                                className="coursue-input text-xs py-2.5 w-full"
-                                autoFocus
-                              />
-                            </div>
-                            <div className="space-y-1.5">
-                              <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
-                                URL Lastlink
-                              </label>
-                              <input
-                                type="url"
-                                value={novoCheckoutUrl}
-                                onChange={(e) => setNovoCheckoutUrl(e.target.value)}
-                                placeholder="https://..."
-                                className="coursue-input text-xs py-2.5 w-full"
-                              />
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={handleAddCheckout}
-                              className="coursue-btn-primary py-2 px-4 text-xs flex items-center gap-1.5"
-                            >
-                              <Check className="w-3.5 h-3.5" /> Adicionar
-                            </button>
-                            <button
-                              onClick={() => { setShowAddCheckout(false); setNovoCheckoutNome(""); setNovoCheckoutUrl(""); }}
-                              className="py-2 px-4 text-xs rounded-xl font-semibold"
-                              style={{ backgroundColor: "var(--surface-alt)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
-                            >
-                              Cancelar
-                            </button>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {influenciador.linksCheckout.length === 0 && !showAddCheckout ? (
-                    <div className="text-center py-12 space-y-3">
-                      <ShoppingCart className="w-10 h-10 mx-auto" style={{ color: "var(--text-muted)", opacity: 0.4 }} />
-                      <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-                        Nenhum link de checkout cadastrado ainda
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2.5">
-                      {influenciador.linksCheckout.map((link) => (
-                        <LinkCheckoutItem
-                          key={link.id}
-                          link={link}
-                          onUpdate={(updates) => handleUpdateCheckout(link.id, updates)}
-                          onDelete={() => handleRemoveCheckout(link.id)}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <CheckoutCategoriasView
+                  influenciador={influenciador}
+                  onSaveInfluenciador={handleSave}
+                />
               )}
 
               {/* ── ABA ÁRVORE ── */}
