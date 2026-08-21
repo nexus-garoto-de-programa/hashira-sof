@@ -125,45 +125,18 @@ export default function InfluenciadorPublicPage() {
           />
 
           <div className="max-w-4xl mx-auto relative z-10">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8">
+            <div className="flex flex-col-reverse md:flex-row items-center justify-between gap-6 md:gap-8">
               
-              {/* Lado Esquerdo: Avatar + Badge */}
-              <div className="flex items-center gap-5 shrink-0">
-                <div className="relative">
-                  {influenciador.fotoUrl ? (
-                    <img
-                      src={influenciador.fotoUrl}
-                      alt={influenciador.nome}
-                      className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl object-cover ring-4 ring-[#5B50E5]/40 shadow-2xl shadow-[#5B50E5]/30"
-                    />
-                  ) : (
-                    <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-gradient-to-br from-[#5B50E5] to-[#7C3AED] flex items-center justify-center text-4xl sm:text-5xl font-extrabold shadow-2xl shadow-[#5B50E5]/30">
-                      {influenciador.nome.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <div className="absolute -bottom-1 -right-1 bg-emerald-500 w-7 h-7 rounded-full border-4 border-[#0F0E1A] flex items-center justify-center" title="Links Validados Ativos">
-                    <Check className="w-3.5 h-3.5 text-white stroke-[3]" />
-                  </div>
-                </div>
-
-                <div className="hidden sm:block space-y-1.5">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                    <Flame className="w-3 h-3 text-amber-400 fill-amber-400" />
+              {/* Lado Esquerdo: Todo o texto alinhado à esquerda */}
+              <div className="flex-1 text-center md:text-left space-y-3 min-w-0">
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-500/15 text-amber-400 border border-amber-500/30 shadow-lg shadow-amber-500/10">
+                    <Flame className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                     PARCEIRO HASHIRA
                   </div>
-                  <p className="text-xs text-[#A78BFA] font-mono">
+                  <span className="text-xs text-[#A78BFA] font-mono">
                     @{influenciador.slugBio}
-                  </p>
-                </div>
-              </div>
-
-              {/* Lado Direito: Mensagem Convidativa Horizontal */}
-              <div className="flex-1 text-center md:text-left space-y-2.5 min-w-0">
-                <div className="sm:hidden flex justify-center mb-1">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                    <Flame className="w-3 h-3 text-amber-400 fill-amber-400" />
-                    PARCEIRO HASHIRA
-                  </div>
+                  </span>
                 </div>
 
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold font-['Plus_Jakarta_Sans'] tracking-tight leading-tight">
@@ -179,6 +152,26 @@ export default function InfluenciadorPublicPage() {
                   <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-white/5 text-white/70 border border-white/10">
                     <ShieldCheck className="w-4 h-4 text-emerald-400" />
                     Links Oficiais &amp; Validados — Central Hashira
+                  </div>
+                </div>
+              </div>
+
+              {/* Lado Direito: Foto do Influenciador */}
+              <div className="shrink-0">
+                <div className="relative">
+                  {influenciador.fotoUrl ? (
+                    <img
+                      src={influenciador.fotoUrl}
+                      alt={influenciador.nome}
+                      className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl object-cover ring-4 ring-[#5B50E5]/40 shadow-2xl shadow-[#5B50E5]/30"
+                    />
+                  ) : (
+                    <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-gradient-to-br from-[#5B50E5] to-[#7C3AED] flex items-center justify-center text-5xl font-extrabold shadow-2xl shadow-[#5B50E5]/30">
+                      {influenciador.nome.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="absolute -bottom-1 -right-1 bg-emerald-500 w-8 h-8 rounded-full border-4 border-[#0F0E1A] flex items-center justify-center" title="Links Validados Ativos">
+                    <Check className="w-4 h-4 text-white stroke-[3]" />
                   </div>
                 </div>
               </div>
