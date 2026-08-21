@@ -480,6 +480,7 @@ function AdminConfiguracoesContent() {
                       <th className="px-6 py-4 font-bold uppercase tracking-wider text-gray-400 text-center">Dashboard</th>
                       <th className="px-6 py-4 font-bold uppercase tracking-wider text-gray-400 text-center">Operações</th>
                       <th className="px-6 py-4 font-bold uppercase tracking-wider text-gray-400 text-center">Kanban Tarefas</th>
+                      <th className="px-6 py-4 font-bold uppercase tracking-wider text-gray-400 text-center">Drive Design</th>
                       <th className="px-6 py-4 font-bold uppercase tracking-wider text-gray-400 text-center">Admin Panorama</th>
                       <th className="px-6 py-4 font-bold uppercase tracking-wider text-gray-400 text-center">CDI</th>
                     </tr>
@@ -565,6 +566,20 @@ function AdminConfiguracoesContent() {
                               title={perms.acessoTarefasTab ? "Acesso liberado" : "Acesso bloqueado"}
                             >
                               {perms.acessoTarefasTab ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+                            </button>
+                          </td>
+
+                          <td className="px-6 py-4 text-center">
+                            <button
+                              onClick={() => handleTogglePermission(u.id, "acessoDriveDesignTab")}
+                              className={`p-2 rounded-xl transition-all ${
+                                perms.acessoDriveDesignTab
+                                  ? "bg-[#5B50E5]/15 text-[#5B50E5]"
+                                  : "bg-gray-100 dark:bg-gray-800 text-gray-400"
+                              }`}
+                              title={perms.acessoDriveDesignTab ? "Acesso liberado ao Drive de Design" : "Sem permissão para o Drive de Design"}
+                            >
+                              {perms.acessoDriveDesignTab ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
                             </button>
                           </td>
 

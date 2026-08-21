@@ -13,6 +13,7 @@ import {
   Sparkles,
   ShieldCheck,
   User,
+  Folder,
 } from "lucide-react";
 import {
   TEAM_MEMBERS,
@@ -41,6 +42,7 @@ import { KanbanTarefasTab } from "@/components/operacoes/KanbanTarefasTab";
 import { ProjetosTab } from "@/components/operacoes/ProjetosTab";
 import { PerformanceTab } from "@/components/operacoes/PerformanceTab";
 import { CalendarioTab } from "@/components/operacoes/CalendarioTab";
+import { DriveDesignTab } from "@/components/operacoes/DriveDesignTab";
 import { NovaTarefaModal } from "@/components/operacoes/NovaTarefaModal";
 
 import { getActiveUser, fetchUsersFromSupabase, UserAccount } from "@/lib/authPermissions";
@@ -49,7 +51,7 @@ import { useRealtimeSubscription } from "@/lib/realtimeSync";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
-type ActiveTab = "setores" | "tarefas" | "projetos" | "performance" | "calendario";
+type ActiveTab = "setores" | "tarefas" | "projetos" | "performance" | "calendario" | "drive-design";
 
 export default function CentralOperacoesPage() {
   const router = useRouter();
@@ -204,6 +206,9 @@ export default function CentralOperacoesPage() {
     { id: "projetos", label: "Projetos", icon: FolderKanban },
     { id: "performance", label: "Performance", icon: BarChart2 },
     { id: "calendario", label: "Calendário", icon: CalendarIcon },
+    ...(activeUser.permissoes?.acessoDriveDesignTab ?? true
+      ? [{ id: "drive-design", label: "Drive de Design", icon: Folder }]
+      : []),
   ];
 
   return (
@@ -372,6 +377,8 @@ export default function CentralOperacoesPage() {
             {activeTab === "performance" && <PerformanceTab />}
 
             {activeTab === "calendario" && <CalendarioTab tarefas={tarefas} />}
+
+            {activeTab === "drive-design" && <DriveDesignTab currentUser={activeUser} />}
           </motion.div>
         </AnimatePresence>
 

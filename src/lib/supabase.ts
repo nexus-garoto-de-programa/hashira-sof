@@ -12,7 +12,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 export async function uploadFileToSupabaseStorage(
   file: File,
-  folder: "avatars" | "covers" | "attachments" = "avatars"
+  folder: "avatars" | "covers" | "attachments" | "drive-design" = "covers"
 ): Promise<string | null> {
   try {
     const fileExt = file.name.split(".").pop() || "png";

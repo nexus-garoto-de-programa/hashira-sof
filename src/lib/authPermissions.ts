@@ -6,6 +6,7 @@ export interface UserPermissions {
   acessoProjetosTab: boolean;
   acessoPerformanceTab: boolean;
   acessoCalendarioTab: boolean;
+  acessoDriveDesignTab: boolean;
   acessoAdminPanorama: boolean;
   acessoCDI: boolean;
 }
@@ -34,6 +35,7 @@ export const DEFAULT_COLLABORATOR_PERMISSIONS: UserPermissions = {
   acessoProjetosTab: true,
   acessoPerformanceTab: true,
   acessoCalendarioTab: true,
+  acessoDriveDesignTab: true,
   acessoAdminPanorama: false,
   acessoCDI: false,
 };
@@ -46,6 +48,7 @@ export const ADMIN_PERMISSIONS: UserPermissions = {
   acessoProjetosTab: true,
   acessoPerformanceTab: true,
   acessoCalendarioTab: true,
+  acessoDriveDesignTab: true,
   acessoAdminPanorama: true,
   acessoCDI: true,
 };
@@ -306,6 +309,7 @@ export function normalizeUserAccount(raw: any): UserAccount {
       acessoProjetosTab: raw.permissoes?.acessoProjetosTab ?? true,
       acessoPerformanceTab: raw.permissoes?.acessoPerformanceTab ?? true,
       acessoCalendarioTab: raw.permissoes?.acessoCalendarioTab ?? true,
+      acessoDriveDesignTab: raw.permissoes?.acessoDriveDesignTab ?? true,
       acessoAdminPanorama: raw.permissoes?.acessoAdminPanorama ?? (papel === "administrador"),
       acessoCDI: raw.permissoes?.acessoCDI ?? (papel === "administrador"),
     },
