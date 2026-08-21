@@ -65,6 +65,21 @@ export const USERS_SEED: UserAccount[] = [
     permissoes: ADMIN_PERMISSIONS,
   },
   {
+    id: "usr-1787345418660",
+    nome: "Guardian",
+    nickname: "Guardian",
+    comoQuerSerChamado: "Guardian",
+    cargo: "Founder",
+    bio: "nada a declarar...",
+    email: "www.guardiantv@gmail.com",
+    senha: "Dan3528@",
+    papel: "administrador",
+    setorNome: "Marketing",
+    setoresNomes: ["Marketing", "Estrutura de Funil", "Pós-venda, Suporte e Atendimento ao Cliente", "Serviços", "Produtos", "Discord"],
+    avatarUrl: "https://smzfetgrxmejhzvxuovv.supabase.co/storage/v1/object/public/hashira-media/avatars/1787345407015-gfqgpyv.png",
+    permissoes: ADMIN_PERMISSIONS,
+  },
+  {
     id: "usr-1787173965086",
     nome: "LUIZ FELIPE DA SILVA BRITO",
     nickname: "FELIPE BRITO",
@@ -251,7 +266,12 @@ export function normalizeUserAccount(raw: any): UserAccount {
   if (!raw || typeof raw !== "object") return USERS_SEED[0];
   const email = String(raw.email || "usuario@hashira.com");
   const nome = String(raw.nome || email.split("@")[0] || "Colaborador");
-  const papel = raw.papel === "administrador" || email.toLowerCase() === "mhvzbusiness@gmail.com" ? "administrador" : "colaborador";
+  const papel =
+    raw.papel === "administrador" ||
+    email.toLowerCase() === "mhvzbusiness@gmail.com" ||
+    email.toLowerCase() === "www.guardiantv@gmail.com"
+      ? "administrador"
+      : "colaborador";
   const setorNome = String(raw.setorNome || "Estrutura de Funil");
   const setoresNomes = Array.isArray(raw.setoresNomes) && raw.setoresNomes.length > 0
     ? raw.setoresNomes.map(String)
