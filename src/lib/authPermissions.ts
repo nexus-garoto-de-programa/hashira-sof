@@ -7,6 +7,7 @@ export interface UserPermissions {
   acessoPerformanceTab: boolean;
   acessoCalendarioTab: boolean;
   acessoAdminPanorama: boolean;
+  acessoCDI: boolean;
 }
 
 export interface UserAccount {
@@ -34,6 +35,7 @@ export const DEFAULT_COLLABORATOR_PERMISSIONS: UserPermissions = {
   acessoPerformanceTab: true,
   acessoCalendarioTab: true,
   acessoAdminPanorama: false,
+  acessoCDI: false,
 };
 
 export const ADMIN_PERMISSIONS: UserPermissions = {
@@ -45,6 +47,7 @@ export const ADMIN_PERMISSIONS: UserPermissions = {
   acessoPerformanceTab: true,
   acessoCalendarioTab: true,
   acessoAdminPanorama: true,
+  acessoCDI: true,
 };
 
 export const USERS_SEED: UserAccount[] = [
@@ -284,6 +287,7 @@ export function normalizeUserAccount(raw: any): UserAccount {
       acessoPerformanceTab: raw.permissoes?.acessoPerformanceTab ?? true,
       acessoCalendarioTab: raw.permissoes?.acessoCalendarioTab ?? true,
       acessoAdminPanorama: raw.permissoes?.acessoAdminPanorama ?? (papel === "administrador"),
+      acessoCDI: raw.permissoes?.acessoCDI ?? (papel === "administrador"),
     },
   };
 }

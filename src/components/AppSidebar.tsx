@@ -16,6 +16,7 @@ import {
   Sun,
   Moon,
   Settings,
+  UserRoundPlus,
 } from "lucide-react";
 import {
   getActiveUser,
@@ -101,9 +102,13 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     ...(currentUser.permissoes?.acessoOperacoes
       ? [{ href: "/operacoes", label: "Central de Operações", icon: Command }]
       : []),
+    ...(currentUser.permissoes?.acessoCDI && activeRoleView !== "administrador"
+      ? [{ href: "/admin/influenciadores", label: "Influenciadores", icon: UserRoundPlus }]
+      : []),
     ...(activeRoleView === "administrador"
       ? [
           { href: "/admin/dashboard", label: "Painel Admin", icon: LayoutDashboard },
+          { href: "/admin/influenciadores", label: "Influenciadores", icon: UserRoundPlus },
           { href: "/admin/configuracoes", label: "Configurações", icon: Settings },
         ]
       : []),

@@ -476,11 +476,12 @@ function AdminConfiguracoesContent() {
                   <thead style={{ backgroundColor: "var(--surface-alt)", borderBottom: "1px solid var(--border)" }}>
                     <tr>
                       <th className="px-6 py-4 font-bold uppercase tracking-wider text-gray-400">Colaborador</th>
-                      <th className="px-6 py-4 font-bold uppercase tracking-wider text-gray-400">Setor & Papel</th>
+                      <th className="px-6 py-4 font-bold uppercase tracking-wider text-gray-400">Setor &amp; Papel</th>
                       <th className="px-6 py-4 font-bold uppercase tracking-wider text-gray-400 text-center">Dashboard</th>
                       <th className="px-6 py-4 font-bold uppercase tracking-wider text-gray-400 text-center">Operações</th>
                       <th className="px-6 py-4 font-bold uppercase tracking-wider text-gray-400 text-center">Kanban Tarefas</th>
                       <th className="px-6 py-4 font-bold uppercase tracking-wider text-gray-400 text-center">Admin Panorama</th>
+                      <th className="px-6 py-4 font-bold uppercase tracking-wider text-gray-400 text-center">CDI</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -578,6 +579,20 @@ function AdminConfiguracoesContent() {
                               title={perms.acessoAdminPanorama ? "Acesso liberado ao Panorama Admin" : "Sem permissão para o Panorama Admin"}
                             >
                               {perms.acessoAdminPanorama ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+                            </button>
+                          </td>
+
+                          <td className="px-6 py-4 text-center">
+                            <button
+                              onClick={() => handleTogglePermission(u.id, "acessoCDI")}
+                              className={`p-2 rounded-xl transition-all ${
+                                perms.acessoCDI
+                                  ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                                  : "bg-gray-100 dark:bg-gray-800 text-gray-400"
+                              }`}
+                              title={perms.acessoCDI ? "Acesso liberado ao CDI" : "Sem permissão para o CDI"}
+                            >
+                              {perms.acessoCDI ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
                             </button>
                           </td>
                         </tr>

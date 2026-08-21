@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -50,6 +50,14 @@ export default function CollaboratorDashboardPage() {
   const [statusFilter, setStatusFilter] = useState<string>("todos");
   const [selectedDemanda, setSelectedDemanda] = useState<Demanda | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+
+  // Refs para carrossel com drag horizontal nativo
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const dragStartX = useRef(0);
+  const scrollStartX = useRef(0);
+  // Ref para a tabela (botão "Ver todas" faz scroll até ela)
+  const tableRef = useRef<HTMLElement>(null);
 
   const reloadDemandas = async () => {
     const remote = await fetchDemandasFromSupabase();
@@ -146,6 +154,41 @@ export default function CollaboratorDashboardPage() {
   const updateDemandasState = (novas: Demanda[]) => {
     setDemandas(novas);
     saveStoredDemandas(novas);
+  };
+
+  // Handlers drag horizontal para o carrossel (mouse + touch)
+  const handleCarouselMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = carouselRef.current;
+    if (!el) return;
+    isDragging.current = true;
+    dragStartX.current = e.clientX;
+    scrollStartX.current = el.scrollLeft;
+    el.style.cursor = "grabbing";
+    el.style.userSelect = "none";
+  };
+
+  const handleCarouselMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging.current || !carouselRef.current) return;
+    const delta = dragStartX.current - e.clientX;
+    carouselRef.current.scrollLeft = scrollStartX.current + delta;
+  };
+
+  const handleCarouselMouseUp = () => {
+    isDragging.current = false;
+    if (carouselRef.current) {
+      carouselRef.current.style.cursor = "grab";
+      carouselRef.current.style.userSelect = "";
+    }
+  };
+
+  const handleCarouselLeave = () => {
+    if (isDragging.current) handleCarouselMouseUp();
+  };
+
+  // Handler "Ver todas" — rola até a tabela
+  const handleVerTodas = () => {
+    setStatusFilter("todos");
+    tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const demandasConcluidas = userDemandas.filter((d) => d.status === "concluida").length;
@@ -265,8 +308,8 @@ export default function CollaboratorDashboardPage() {
           </div>
         </header>
 
-        {/* Content Layout in 3 Columns */}
-        <div className="p-8 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8">
+        {/* Content Layout */}
+        <div className="p-8 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-8 items-start">
           
           {/* Central Fluid Area */}
           <div className="space-y-8 min-w-0">
@@ -327,8 +370,22 @@ export default function CollaboratorDashboardPage() {
                 </span>
               </div>
 
-              {/* Draggable Carousel */}
-              <motion.div className="flex gap-4 overflow-x-auto pb-4 pt-1 no-scrollbar scroll-smooth">
+              {/* Draggable Carousel — scroll horizontal por drag do mouse */}
+              <div
+                ref={carouselRef}
+                className="flex gap-4 pb-4 pt-1 no-scrollbar"
+                style={{
+                  cursor: "grab",
+                  overflowX: "auto",
+                  overflowY: "visible",
+                  WebkitOverflowScrolling: "touch",
+                  width: "100%",
+                }}
+                onMouseDown={handleCarouselMouseDown}
+                onMouseMove={handleCarouselMouseMove}
+                onMouseUp={handleCarouselMouseUp}
+                onMouseLeave={handleCarouselLeave}
+              >
                 <AnimatePresence>
                   {filteredDemandas.map((demanda) => (
                     <DemandCard
@@ -339,11 +396,11 @@ export default function CollaboratorDashboardPage() {
                     />
                   ))}
                 </AnimatePresence>
-              </motion.div>
+              </div>
             </section>
 
             {/* Detailed Table Section: Suas Demandas */}
-            <section className="space-y-4 pt-2">
+            <section ref={tableRef as React.RefObject<HTMLElement>} className="space-y-4 pt-2 scroll-mt-20">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4" style={{ borderBottom: '1px solid var(--border)' }}>
                 <div>
                   <h2 className="text-xl font-extrabold font-['Plus_Jakarta_Sans']" style={{ color: 'var(--text-primary)' }}>
@@ -570,7 +627,7 @@ export default function CollaboratorDashboardPage() {
               </div>
 
               <button
-                onClick={() => setStatusFilter("todos")}
+                onClick={handleVerTodas}
                 className="coursue-btn-secondary w-full text-xs py-2.5 rounded-full mt-2"
               >
                 Ver todas

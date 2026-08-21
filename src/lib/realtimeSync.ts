@@ -10,6 +10,7 @@ export type RealtimeTopic =
   | "setores"
   | "projetos"
   | "branding"
+  | "influenciadores"
   | "all";
 
 // 1. Cross-Tab Broadcast Channel (instantâneo entre abas do mesmo navegador)
@@ -79,6 +80,7 @@ export function useRealtimeSubscription({
     window.addEventListener("hashira_operacoes_tarefas_updated", handleTrigger);
     window.addEventListener("hashira_users_updated", handleTrigger);
     window.addEventListener("hashira_branding_updated", handleTrigger);
+    window.addEventListener("hashira_influenciadores_updated", handleTrigger);
 
     // 2. Escuta eventos cross-tab (outras abas)
     const channel = getBroadcastChannel();
@@ -119,6 +121,11 @@ export function useRealtimeSubscription({
           handleTrigger();
         }
       })
+      .on("postgres_changes", { event: "*", schema: "public", table: "influenciadores" }, () => {
+        if (topics.includes("all") || topics.includes("influenciadores")) {
+          handleTrigger();
+        }
+      })
       .subscribe();
 
     // 4. Auto-sincronização preventiva ao focar a janela ou aba
@@ -144,6 +151,7 @@ export function useRealtimeSubscription({
       window.removeEventListener("hashira_operacoes_tarefas_updated", handleTrigger);
       window.removeEventListener("hashira_users_updated", handleTrigger);
       window.removeEventListener("hashira_branding_updated", handleTrigger);
+      window.removeEventListener("hashira_influenciadores_updated", handleTrigger);
       window.removeEventListener("focus", handleFocus);
       window.removeEventListener("visibilitychange", handleFocus);
       clearInterval(interval);

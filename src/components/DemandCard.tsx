@@ -109,7 +109,10 @@ export const DemandCard: React.FC<DemandCardProps> = ({
           </div>
 
           <button
-            onClick={() => onOpenDetails(demanda)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenDetails(demanda);
+            }}
             className="inline-flex items-center gap-1 text-xs font-bold text-[#5B50E5] hover:text-[#483EA8] hover:underline"
           >
             <span>Ver detalhes</span>
