@@ -7,6 +7,8 @@ import {
   LinkCheckout,
   CATEGORIAS_CHECKOUT_PREDEFINIDAS,
   upsertLinkCheckoutCategoria,
+  formatarLinkComAssinatura,
+  formatarTodosLinksCheckout,
 } from "@/lib/influenciadores";
 import { toast } from "sonner";
 
@@ -16,14 +18,21 @@ interface CheckoutCategoriasViewProps {
   somenteLeitura?: boolean;
 }
 
-function CopyButton({ text }: { text: string }) {
+function CopyButton({ text, formattedText }: { text: string; formattedText?: string }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = async () => {
+    const textToCopy = formattedText || text;
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(textToCopy);
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {
+      const el = document.createElement("textarea");
+      el.value = textToCopy;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     }
@@ -107,6 +116,17 @@ export function CheckoutCategoriasView({
 
   return (
     <div className="space-y-6">
+      {/* Botão para copiar TODOS os links de checkout */}
+      <div className="flex items-center justify-between flex-wrap gap-3 pb-2">
+        <p className="text-xs font-bold uppercase tracking-wider text-amber-500/80">
+          Categorias de Oferta &amp; Checkout
+        </p>
+        <CopyButton
+          text=""
+          formattedText={formatarTodosLinksCheckout(influenciador)}
+        />
+      </div>
+
       {CATEGORIAS_CHECKOUT_PREDEFINIDAS.map((cat) => (
         <div
           key={cat.id}
@@ -118,11 +138,13 @@ export function CheckoutCategoriasView({
           }}
         >
           {/* Título da Categoria */}
-          <div className="flex items-center gap-2">
-            <span className="text-base">{cat.icone}</span>
-            <h3 className="text-base font-extrabold text-[#F59E0B] tracking-wide font-['Plus_Jakarta_Sans']">
-              {cat.titulo}
-            </h3>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-base">{cat.icone}</span>
+              <h3 className="text-base font-extrabold text-[#F59E0B] tracking-wide font-['Plus_Jakarta_Sans']">
+                {cat.titulo}
+              </h3>
+            </div>
           </div>
 
           {/* Sub-itens da Categoria */}
@@ -171,7 +193,13 @@ export function CheckoutCategoriasView({
                     <div className="flex items-center gap-2 shrink-0">
                       {temLink ? (
                         <>
-                          <CopyButton text={link!.url} />
+                          <CopyButton
+                            text={link!.url}
+                            formattedText={formatarLinkComAssinatura(
+                              `Checkout — ${cat.titulo} (${sub.label})`,
+                              link!.url
+                            )}
+                          />
                           <button
                             onClick={() =>
                               handleOpenEdit(cat.id, sub.id, sub.label, link!.url)
@@ -205,7 +233,13 @@ export function CheckoutCategoriasView({
 
                   {somenteLeitura && temLink && (
                     <div className="flex items-center gap-2 shrink-0">
-                      <CopyButton text={link!.url} />
+                      <CopyButton
+                        text={link!.url}
+                        formattedText={formatarLinkComAssinatura(
+                          `Checkout — ${cat.titulo} (${sub.label})`,
+                          link!.url
+                        )}
+                      />
                     </div>
                   )}
                 </div>

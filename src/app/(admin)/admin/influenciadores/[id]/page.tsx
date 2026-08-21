@@ -30,6 +30,9 @@ import {
   addLinkCheckout,
   updateLinkCheckout,
   removeLinkCheckout,
+  formatarTodosLinksUTM,
+  formatarPacoteCompletoInfluenciador,
+  formatarLinkComAssinatura,
 } from "@/lib/influenciadores";
 import { uploadFileToSupabaseStorage } from "@/lib/supabase";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -50,17 +53,29 @@ const TABS: { id: ActiveTab; label: string; icon: React.ElementType }[] = [
   { id: "configuracoes", label: "Configurações",        icon: Settings    },
 ];
 
-function CopyButton({ text, label }: { text: string; label?: string }) {
+function CopyButton({ text, formattedText, label }: { text: string; formattedText?: string; label?: string }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(text).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
+    const textToCopy = formattedText || text;
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      const el = document.createElement("textarea");
+      el.value = textToCopy;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    }
   };
   return (
     <button
       onClick={handleCopy}
-      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
+      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all shrink-0"
       style={{
         backgroundColor: copied ? "rgba(16,185,129,0.15)" : "var(--surface-alt)",
         color: copied ? "#10B981" : "var(--text-secondary)",
@@ -304,6 +319,15 @@ export default function InfluenciadorDetailPage() {
                 {influenciador.linksCheckout.length} link{influenciador.linksCheckout.length !== 1 ? "s" : ""} de checkout · utm_source: {influenciador.utmSourcePadrao}
               </p>
             </div>
+
+            {/* Botão de Destaque: Copiar Pacote Completo de Links */}
+            <div className="shrink-0">
+              <CopyButton
+                text=""
+                formattedText={formatarPacoteCompletoInfluenciador(influenciador)}
+                label="Copiar Pacote Completo de Links 📦"
+              />
+            </div>
           </div>
 
           {/* Tabs */}
@@ -344,6 +368,18 @@ export default function InfluenciadorDetailPage() {
               {/* ── ABA UTM ── */}
               {activeTab === "utm" && (
                 <div className="space-y-5">
+                  {/* Cabeçalho da aba UTM com Copiar Todos os UTMs */}
+                  <div className="flex items-center justify-between flex-wrap gap-3 pb-1">
+                    <p className="text-xs font-bold uppercase tracking-wider text-[#5B50E5]">
+                      Links com UTM por Plataforma
+                    </p>
+                    <CopyButton
+                      text=""
+                      formattedText={formatarTodosLinksUTM(influenciador)}
+                      label="Copiar Todos os Links UTM"
+                    />
+                  </div>
+
                   {/* URL Base */}
                   <div
                     className="rounded-2xl p-5"
@@ -365,6 +401,10 @@ export default function InfluenciadorDetailPage() {
                       </div>
                       <CopyButton
                         text={`https://${influenciador.urlBase}/${influenciador.slugPrincipal}`}
+                        formattedText={formatarLinkComAssinatura(
+                          `URL Base (${influenciador.nome})`,
+                          `https://${influenciador.urlBase}/${influenciador.slugPrincipal}`
+                        )}
                         label="Copiar"
                       />
                     </div>

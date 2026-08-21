@@ -2,31 +2,51 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { fetchInfluenciadorByToken, generateUTMLinks, generateArvoreLinks, getArvoreRaiz, Influenciador } from "@/lib/influenciadores";
+import {
+  fetchInfluenciadorByToken,
+  generateUTMLinks,
+  generateArvoreLinks,
+  getArvoreRaiz,
+  Influenciador,
+  formatarTodosLinksUTM,
+  formatarPacoteCompletoInfluenciador,
+} from "@/lib/influenciadores";
 import { UTMLinkBlock } from "@/components/influenciadores/UTMLinkBlock";
 import { ArvoreLinks } from "@/components/influenciadores/ArvoreLinks";
 import { CheckoutCategoriasView } from "@/components/influenciadores/CheckoutCategoriasView";
-import { Copy, Check, ExternalLink, ShoppingCart } from "lucide-react";
+import { Copy, Check, ExternalLink, ShoppingCart, Package } from "lucide-react";
 
-function CopyButton({ text }: { text: string }) {
+function CopyButton({ text, formattedText, label }: { text: string; formattedText?: string; label?: string }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(text).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
+    const textToCopy = formattedText || text;
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      const el = document.createElement("textarea");
+      el.value = textToCopy;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    }
   };
   return (
     <button
       onClick={handleCopy}
-      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
+      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all shrink-0"
       style={{
         backgroundColor: copied ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.08)",
-        color: copied ? "#10B981" : "rgba(255,255,255,0.7)",
+        color: copied ? "#10B981" : "rgba(255,255,255,0.8)",
         border: copied ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(255,255,255,0.12)",
       }}
     >
       {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-      {copied ? "Copiado!" : "Copiar"}
+      <span>{copied ? "Copiado!" : label || "Copiar"}</span>
     </button>
   );
 }
@@ -113,6 +133,15 @@ export default function InfluenciadorPublicPage() {
             <p className="text-sm text-white/50 font-mono mt-1">/{influenciador.slugBio}</p>
           </div>
 
+          {/* Botão de Destaque para Copiar Todos os Links do Influenciador */}
+          <div className="pt-2 flex justify-center">
+            <CopyButton
+              text=""
+              formattedText={formatarPacoteCompletoInfluenciador(influenciador)}
+              label="Copiar Pacote Completo de Links 📦"
+            />
+          </div>
+
           {/* Badge Hashira */}
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold" style={{ backgroundColor: "rgba(91,80,229,0.2)", border: "1px solid rgba(91,80,229,0.3)", color: "#A78BFA" }}>
             🏯 Central Hashira
@@ -125,9 +154,16 @@ export default function InfluenciadorPublicPage() {
 
         {/* Links UTM */}
         <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <div className="w-1 h-5 rounded-full bg-[#5B50E5]" />
-            <h2 className="text-base font-extrabold">Links com UTM</h2>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-5 rounded-full bg-[#5B50E5]" />
+              <h2 className="text-base font-extrabold">Links com UTM</h2>
+            </div>
+            <CopyButton
+              text=""
+              formattedText={formatarTodosLinksUTM(influenciador)}
+              label="Copiar Todos os UTMs"
+            />
           </div>
           <div className="space-y-3">
             {utmLinks.map((block) => (

@@ -164,6 +164,127 @@ export function getArvoreRaiz(inf: Influenciador): string {
 }
 
 // ─────────────────────────────────────────────
+// ASSINATURA DIGITAL E FORMATAÇÃO DE CÓPIA
+// ─────────────────────────────────────────────
+
+export const HASHIRA_SIGNATURE_FOOTER = `⚡ Links oficiais gerados e validados via Central Hashira 🏯`;
+
+/** Formata a mensagem para a cópia de um link individual com assinatura HASHIRA */
+export function formatarLinkComAssinatura(titulo: string, url: string, infoAdicional?: string): string {
+  let text = `🏯 CENTRAL HASHIRA — Link de Divulgação\n📌 ${titulo}\n`;
+  if (infoAdicional) text += `ℹ️ ${infoAdicional}\n`;
+  text += `\n🔗 ${url}\n\n${HASHIRA_SIGNATURE_FOOTER}`;
+  return text;
+}
+
+/** Formata todos os links com UTM do influenciador em um único bloco */
+export function formatarTodosLinksUTM(inf: Influenciador): string {
+  const utms = generateUTMLinks(inf);
+  let text = `🏯 CENTRAL HASHIRA — Links UTM de Divulgação\n`;
+  text += `👤 Influenciador: ${inf.nome} (@${inf.slugBio})\n`;
+  text += `🌐 URL Base: https://${inf.urlBase.replace(/\/$/, "")}/${inf.slugPrincipal}\n\n`;
+  text += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  utms.forEach((u) => {
+    text += `📌 ${u.label.toUpperCase()}:\n🔗 ${u.urlCompleta}\n\n`;
+  });
+  text += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${HASHIRA_SIGNATURE_FOOTER}`;
+  return text;
+}
+
+/** Formata a árvore de links biohashira completa em um único bloco */
+export function formatarTodaArvoreLinks(inf: Influenciador): string {
+  const raiz = getArvoreRaiz(inf);
+  const subrotas = generateArvoreLinks(inf);
+  let text = `🏯 CENTRAL HASHIRA — Árvore de Links\n`;
+  text += `👤 Influenciador: ${inf.nome}\n`;
+  text += `🌳 Link Raiz: ${raiz}\n\n`;
+  text += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  text += `📌 SUB-ROTAS POR PLATAFORMA:\n\n`;
+  subrotas.forEach((s) => {
+    text += `• ${s.label}: ${s.urlCompleta}\n`;
+  });
+  text += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${HASHIRA_SIGNATURE_FOOTER}`;
+  return text;
+}
+
+/** Formata todos os links de checkout por categoria em um único bloco */
+export function formatarTodosLinksCheckout(inf: Influenciador): string {
+  let text = `🏯 CENTRAL HASHIRA — Links de Checkout\n`;
+  text += `👤 Influenciador: ${inf.nome}\n\n`;
+  text += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+
+  CATEGORIAS_CHECKOUT_PREDEFINIDAS.forEach((cat) => {
+    text += `💛 ${cat.titulo.toUpperCase()}:\n`;
+    cat.subItems.forEach((sub) => {
+      const link = inf.linksCheckout.find(
+        (l) => l.categoriaId === cat.id && l.subItemId === sub.id
+      ) || inf.linksCheckout.find(
+        (l) => l.nome.toUpperCase().trim() === sub.label.toUpperCase().trim()
+      );
+      if (link && link.url && link.url.trim().length > 0) {
+        text += `   • ${sub.label}: ${link.url}\n`;
+      } else {
+        text += `   • ${sub.label}: (sem link cadastrado)\n`;
+      }
+    });
+    text += `\n`;
+  });
+
+  text += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${HASHIRA_SIGNATURE_FOOTER}`;
+  return text;
+}
+
+/** Formata um PACOTE COMPLETO com todos os links do influenciador (UTM + Checkout + Árvore) */
+export function formatarPacoteCompletoInfluenciador(inf: Influenciador): string {
+  const utms = generateUTMLinks(inf);
+  const raiz = getArvoreRaiz(inf);
+  const subrotas = generateArvoreLinks(inf);
+
+  let text = `🏯 CENTRAL HASHIRA — PACOTE COMPLETO DE LINKS\n`;
+  text += `👤 Influenciador: ${inf.nome}\n`;
+  text += `📅 Data de emissão: ${new Date().toLocaleDateString("pt-BR")}\n\n`;
+
+  text += `====================================\n`;
+  text += `📊 1. LINKS COM UTM (CAMPANHA)\n`;
+  text += `====================================\n`;
+  utms.forEach((u) => {
+    text += `• ${u.label}: ${u.urlCompleta}\n`;
+  });
+
+  text += `\n====================================\n`;
+  text += `🛒 2. LINKS DE CHECKOUT\n`;
+  text += `====================================\n`;
+  CATEGORIAS_CHECKOUT_PREDEFINIDAS.forEach((cat) => {
+    text += `\n💛 [${cat.titulo.toUpperCase()}]\n`;
+    cat.subItems.forEach((sub) => {
+      const link = inf.linksCheckout.find(
+        (l) => l.categoriaId === cat.id && l.subItemId === sub.id
+      ) || inf.linksCheckout.find(
+        (l) => l.nome.toUpperCase().trim() === sub.label.toUpperCase().trim()
+      );
+      if (link && link.url && link.url.trim().length > 0) {
+        text += `  • ${sub.label}: ${link.url}\n`;
+      } else {
+        text += `  • ${sub.label}: (pendente)\n`;
+      }
+    });
+  });
+
+  text += `\n====================================\n`;
+  text += `🌳 3. ÁRVORE DE LINKS (biohashira)\n`;
+  text += `====================================\n`;
+  text += `• Raiz Principal: ${raiz}\n`;
+  subrotas.forEach((s) => {
+    text += `• ${s.label}: ${s.urlCompleta}\n`;
+  });
+
+  text += `\n====================================\n`;
+  text += `${HASHIRA_SIGNATURE_FOOTER}`;
+
+  return text;
+}
+
+// ─────────────────────────────────────────────
 // MAPEAMENTOS
 // ─────────────────────────────────────────────
 

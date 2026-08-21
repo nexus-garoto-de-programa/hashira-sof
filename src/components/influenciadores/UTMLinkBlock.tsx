@@ -2,24 +2,24 @@
 
 import React, { useState } from "react";
 import { Copy, Check } from "lucide-react";
-import { UTMLinkBlock as UTMLinkBlockType } from "@/lib/influenciadores";
+import { UTMLinkBlock as UTMLinkBlockType, formatarLinkComAssinatura } from "@/lib/influenciadores";
 
 interface UTMLinkBlockProps {
   block: UTMLinkBlockType;
 }
 
-function CopyButton({ text }: { text: string }) {
+function CopyButton({ text, formattedText }: { text: string; formattedText?: string }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
+    const textToCopy = formattedText || text;
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(textToCopy);
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {
-      // fallback
       const el = document.createElement("textarea");
-      el.value = text;
+      el.value = textToCopy;
       document.body.appendChild(el);
       el.select();
       document.execCommand("copy");
@@ -127,7 +127,14 @@ export function UTMLinkBlock({ block }: UTMLinkBlockProps) {
           >
             {block.urlCompleta}
           </p>
-          <CopyButton text={block.urlCompleta} />
+          <CopyButton
+            text={block.urlCompleta}
+            formattedText={formatarLinkComAssinatura(
+              `${block.label} (UTM)`,
+              block.urlCompleta,
+              `utm_source=${block.utmSource} | utm_medium=${block.utmMedium} | utm_content=${block.utmContent}`
+            )}
+          />
         </div>
       </div>
     </div>

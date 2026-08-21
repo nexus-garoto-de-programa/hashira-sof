@@ -1,26 +1,45 @@
 "use client";
 
 import React, { useState } from "react";
-import { Copy, Check, ExternalLink } from "lucide-react";
-import { Influenciador, generateArvoreLinks, getArvoreRaiz, ArvoreLink } from "@/lib/influenciadores";
+import { Copy, Check, ExternalLink, Share2 } from "lucide-react";
+import {
+  Influenciador,
+  generateArvoreLinks,
+  getArvoreRaiz,
+  ArvoreLink,
+  formatarLinkComAssinatura,
+  formatarTodaArvoreLinks,
+} from "@/lib/influenciadores";
 
 interface ArvoreLinksProps {
   influenciador: Influenciador;
   somenteLeitura?: boolean;
 }
 
-function CopyButton({ text }: { text: string }) {
+function CopyButton({ text, formattedText, label }: { text: string; formattedText?: string; label?: string }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(text).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
+    const textToCopy = formattedText || text;
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      const el = document.createElement("textarea");
+      el.value = textToCopy;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    }
   };
   return (
     <button
       onClick={handleCopy}
       title={copied ? "Copiado!" : "Copiar"}
-      className="p-1.5 rounded-lg transition-all shrink-0"
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0"
       style={{
         backgroundColor: copied ? "rgba(16,185,129,0.15)" : "var(--surface-alt)",
         color: copied ? "#10B981" : "var(--text-secondary)",
@@ -28,6 +47,7 @@ function CopyButton({ text }: { text: string }) {
       }}
     >
       {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+      {label && <span>{copied ? "Copiado!" : label}</span>}
     </button>
   );
 }
@@ -46,6 +66,18 @@ export function ArvoreLinks({ influenciador, somenteLeitura = false }: ArvoreLin
 
   return (
     <div className="space-y-4">
+      {/* Botão de topo: Copiar Toda a Árvore */}
+      <div className="flex items-center justify-between flex-wrap gap-3 pb-1">
+        <p className="text-xs font-bold uppercase tracking-wider text-[#5B50E5]">
+          Árvore de Links (biohashira.com.br)
+        </p>
+        <CopyButton
+          text=""
+          formattedText={formatarTodaArvoreLinks(influenciador)}
+          label="Copiar Toda a Árvore"
+        />
+      </div>
+
       {/* Linha raiz */}
       <div
         className="rounded-2xl p-4"
@@ -69,7 +101,13 @@ export function ArvoreLinks({ influenciador, somenteLeitura = false }: ArvoreLin
               </a>
             </div>
           </div>
-          <CopyButton text={raiz} />
+          <CopyButton
+            text={raiz}
+            formattedText={formatarLinkComAssinatura(
+              `Árvore de Links — Raiz (${influenciador.nome})`,
+              raiz
+            )}
+          />
         </div>
       </div>
 
@@ -113,7 +151,13 @@ export function ArvoreLinks({ influenciador, somenteLeitura = false }: ArvoreLin
                 </div>
               </div>
 
-              <CopyButton text={link.urlCompleta} />
+              <CopyButton
+                text={link.urlCompleta}
+                formattedText={formatarLinkComAssinatura(
+                  `Árvore de Links — ${link.label} (${influenciador.nome})`,
+                  link.urlCompleta
+                )}
+              />
             </div>
           );
         })}
