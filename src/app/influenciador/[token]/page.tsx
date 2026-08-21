@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import {
   fetchInfluenciadorByToken,
@@ -11,7 +11,24 @@ import {
   formatarPacoteCompletoInfluenciador,
   CATEGORIAS_CHECKOUT_PREDEFINIDAS,
 } from "@/lib/influenciadores";
-import { Copy, Check, ShieldCheck, Sparkles, Link2, ShoppingCart, TreePine, ExternalLink } from "lucide-react";
+import { Copy, Check, ShieldCheck, Sparkles, Link2, ShoppingCart, TreePine, Flame, TrendingUp, Zap } from "lucide-react";
+
+// Lista de frases motivacionais curtas para vendas
+const FRASES_MOTIVACIONAIS = [
+  "Como vão as vendas hoje?",
+  "Pronto para bater recordes de conversão hoje?",
+  "Sua audiência está esperando suas indicações — bora pra cima!",
+  "Cada link compartilhado é uma nova oportunidade de faturamento.",
+  "Tudo pronto para alavancar suas comissões hoje!",
+  "A constância é a chave do sucesso — vamos escalar as vendas!",
+];
+
+function getSaudacaoHorario(): string {
+  const hora = new Date().getHours();
+  if (hora < 12) return "Bom dia";
+  if (hora < 18) return "Boa tarde";
+  return "Boa noite";
+}
 
 export default function InfluenciadorPublicPage() {
   const params = useParams();
@@ -21,6 +38,12 @@ export default function InfluenciadorPublicPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Seleciona uma frase motivacional aleatória no carregamento da página
+  const fraseMotivacional = useMemo(() => {
+    const idx = Math.floor(Math.random() * FRASES_MOTIVACIONAIS.length);
+    return FRASES_MOTIVACIONAIS[idx];
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -82,51 +105,65 @@ export default function InfluenciadorPublicPage() {
   const utmLinks = generateUTMLinks(influenciador);
   const arvoreLinks = generateArvoreLinks(influenciador);
   const raizBio = getArvoreRaiz(influenciador);
+  const saudacao = getSaudacaoHorario();
 
   return (
     <div className="min-h-screen bg-[#0F0E1A] text-white flex flex-col justify-between selection:bg-[#5B50E5] selection:text-white">
-      {/* Header Decorativo com Perfil */}
       <div>
+        {/* HERO CONVIDATIVA & MOTIVACIONAL */}
         <div
-          className="relative overflow-hidden py-12 px-4"
+          className="relative overflow-hidden py-14 px-4"
           style={{
-            background: "linear-gradient(135deg, #181438 0%, #0F0E1A 70%)",
-            borderBottom: "1px solid rgba(91,80,229,0.2)",
+            background: "linear-gradient(135deg, #1C1742 0%, #120F26 50%, #0F0E1A 100%)",
+            borderBottom: "1px solid rgba(91,80,229,0.25)",
           }}
         >
-          {/* Glows de fundo */}
+          {/* Glows de fundo animados */}
           <div
-            className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-48 blur-3xl opacity-30 pointer-events-none"
-            style={{ background: "radial-gradient(circle, #5B50E5 0%, transparent 70%)" }}
+            className="absolute top-0 left-1/2 -translate-x-1/2 w-[480px] h-64 blur-[100px] opacity-35 pointer-events-none"
+            style={{ background: "radial-gradient(circle, #5B50E5 0%, #7C3AED 50%, transparent 70%)" }}
           />
 
-          <div className="max-w-md mx-auto text-center relative z-10 space-y-4">
-            {/* Foto de Perfil */}
-            {influenciador.fotoUrl ? (
-              <img
-                src={influenciador.fotoUrl}
-                alt={influenciador.nome}
-                className="w-24 h-24 rounded-3xl object-cover mx-auto ring-4 ring-[#5B50E5]/30 shadow-2xl"
-              />
-            ) : (
-              <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-[#5B50E5] to-[#7C3AED] mx-auto flex items-center justify-center text-4xl font-extrabold shadow-2xl">
-                {influenciador.nome.charAt(0).toUpperCase()}
-              </div>
-            )}
+          <div className="max-w-md mx-auto text-center relative z-10 space-y-5">
+            {/* Badge de Parceria */}
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-amber-500/15 text-amber-400 border border-amber-500/30 shadow-lg shadow-amber-500/10">
+              <Flame className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+              PARCEIRO HASHIRA
+            </div>
 
-            <div>
-              <h1 className="text-2xl font-extrabold font-['Plus_Jakarta_Sans']">
-                {influenciador.nome}
+            {/* Foto de Perfil */}
+            <div className="relative inline-block">
+              {influenciador.fotoUrl ? (
+                <img
+                  src={influenciador.fotoUrl}
+                  alt={influenciador.nome}
+                  className="w-24 h-24 rounded-3xl object-cover mx-auto ring-4 ring-[#5B50E5]/40 shadow-2xl shadow-[#5B50E5]/30"
+                />
+              ) : (
+                <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-[#5B50E5] to-[#7C3AED] mx-auto flex items-center justify-center text-4xl font-extrabold shadow-2xl shadow-[#5B50E5]/30">
+                  {influenciador.nome.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div className="absolute -bottom-1 -right-1 bg-emerald-500 w-6 h-6 rounded-full border-4 border-[#0F0E1A] flex items-center justify-center" title="Links Validados Ativos">
+                <Check className="w-3 h-3 text-white stroke-[3]" />
+              </div>
+            </div>
+
+            {/* Mensagem Convidativa de Boas-Vindas */}
+            <div className="space-y-1.5">
+              <h1 className="text-2xl sm:text-3xl font-extrabold font-['Plus_Jakarta_Sans'] tracking-tight">
+                {saudacao}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-200 to-[#A78BFA]">{influenciador.nome}</span>! 👋
               </h1>
-              <p className="text-sm text-[#A78BFA] font-mono mt-1">
-                @{influenciador.slugBio}
+              <p className="text-sm font-semibold text-[#A78BFA] flex items-center justify-center gap-1.5">
+                <TrendingUp className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>{fraseMotivacional}</span>
               </p>
             </div>
 
             {/* Badge de Verificação Central Hashira */}
-            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#5B50E5]/15 text-[#A78BFA] border border-[#5B50E5]/30">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#A78BFA]" />
-              Links Oficiais Validados — Central Hashira
+            <div className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-semibold bg-white/5 text-white/70 border border-white/10">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              Links Oficiais &amp; Validados — Central Hashira
             </div>
           </div>
         </div>
@@ -134,49 +171,53 @@ export default function InfluenciadorPublicPage() {
         {/* Conteúdo Principal */}
         <div className="max-w-md mx-auto px-4 py-8 space-y-8">
 
-          {/* SUPER BOTÃO DE CÓPIA EM LOTE */}
-          <div className="space-y-3">
+          {/* ÚNICA OPÇÃO DE CÓPIA NA TELA: SUPER BOTÃO PACOTE COMPLETO */}
+          <div className="space-y-3.5">
             <button
               onClick={handleCopyTodos}
-              className={`w-full py-4 px-6 rounded-2xl font-extrabold text-sm flex items-center justify-center gap-3 transition-all transform active:scale-95 shadow-xl ${
+              className={`w-full py-4 px-6 rounded-2xl font-extrabold text-sm flex items-center justify-center gap-3 transition-all transform active:scale-95 shadow-2xl ${
                 copied
-                  ? "bg-emerald-500 text-white shadow-emerald-500/20"
-                  : "bg-gradient-to-r from-[#5B50E5] via-[#6356EE] to-[#7C3AED] hover:opacity-95 text-white shadow-[#5B50E5]/30"
+                  ? "bg-emerald-500 text-white shadow-emerald-500/30 ring-2 ring-emerald-400"
+                  : "bg-gradient-to-r from-[#5B50E5] via-[#6356EE] to-[#7C3AED] hover:opacity-95 text-white shadow-[#5B50E5]/40 ring-1 ring-white/20"
               }`}
             >
               {copied ? (
                 <>
-                  <Check className="w-5 h-5" />
+                  <Check className="w-5 h-5 stroke-[3]" />
                   <span>TODOS OS LINKS COPIADOS COM SUCESSO!</span>
                 </>
               ) : (
                 <>
-                  <Copy className="w-5 h-5" />
+                  <Zap className="w-5 h-5 text-amber-300 fill-amber-300" />
                   <span>COPIAR TODOS OS MEUS LINKS DE UMA VEZ</span>
                 </>
               )}
             </button>
 
-            {/* Instrução de Segurança */}
+            {/* Aviso de Segurança de Cópia Única */}
             <div
               className="rounded-2xl p-4 flex items-start gap-3"
               style={{
-                backgroundColor: "rgba(91,80,229,0.06)",
-                border: "1px solid rgba(91,80,229,0.15)",
+                backgroundColor: "rgba(91,80,229,0.08)",
+                border: "1px solid rgba(91,80,229,0.2)",
               }}
             >
               <Sparkles className="w-4 h-4 text-[#A78BFA] shrink-0 mt-0.5" />
-              <p className="text-xs text-white/70 leading-relaxed">
-                Para evitar erros ou trocas acidentais, clique no botão acima para copiar seu pacote completo (UTMs + Checkout + Árvore Bio) com assinatura oficial Hashira.
+              <p className="text-xs text-white/80 leading-relaxed">
+                <strong className="text-white">Opção Única &amp; Segura:</strong> Para evitar trocas ou erros nos seus links, basta um clique no botão acima para copiar seu pacote completo de vendas (UTMs + Checkout + Árvore Bio) pronto com a assinatura digital oficial Hashira.
               </p>
             </div>
           </div>
 
-          {/* PRÉVIA INFORMATIVA DOS LINKS INCLUÍDOS */}
+          {/* PRÉVIA INFORMATIVA DOS LINKS INCLUÍDOS (SEM NENHUM BOTÃO DE CÓPIA SEPARADO) */}
           <div className="space-y-6 pt-2">
-            <p className="text-xs font-bold uppercase tracking-wider text-white/40 text-center">
-              Conteúdo do Pacote Copiado
-            </p>
+            <div className="flex items-center justify-center gap-2">
+              <div className="h-px bg-white/10 flex-1" />
+              <span className="text-xs font-bold uppercase tracking-wider text-white/40 px-2">
+                Resumo do Pacote Copiado
+              </span>
+              <div className="h-px bg-white/10 flex-1" />
+            </div>
 
             {/* 1. Links UTM */}
             <div
