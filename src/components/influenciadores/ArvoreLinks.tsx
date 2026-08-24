@@ -66,18 +66,6 @@ export function ArvoreLinks({ influenciador, somenteLeitura = false }: ArvoreLin
 
   return (
     <div className="space-y-4">
-      {/* Botão de topo: Copiar Toda a Árvore */}
-      <div className="flex items-center justify-between flex-wrap gap-3 pb-1">
-        <p className="text-xs font-bold uppercase tracking-wider text-[#5B50E5]">
-          Árvore de Links (biohashira.com.br)
-        </p>
-        <CopyButton
-          text=""
-          formattedText={formatarTodaArvoreLinks(influenciador)}
-          label="Copiar Toda a Árvore"
-        />
-      </div>
-
       {/* Linha raiz */}
       <div
         className="rounded-2xl p-4"
@@ -151,13 +139,7 @@ export function ArvoreLinks({ influenciador, somenteLeitura = false }: ArvoreLin
                 </div>
               </div>
 
-              <CopyButton
-                text={link.urlCompleta}
-                formattedText={formatarLinkComAssinatura(
-                  `Árvore de Links — ${link.label} (${influenciador.nome})`,
-                  link.urlCompleta
-                )}
-              />
+              <CopyButton text={link.urlCompleta} />
             </div>
           );
         })}

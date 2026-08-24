@@ -127,14 +127,7 @@ export function UTMLinkBlock({ block }: UTMLinkBlockProps) {
           >
             {block.urlCompleta}
           </p>
-          <CopyButton
-            text={block.urlCompleta}
-            formattedText={formatarLinkComAssinatura(
-              `${block.label} (UTM)`,
-              block.urlCompleta,
-              `utm_source=${block.utmSource} | utm_medium=${block.utmMedium} | utm_content=${block.utmContent}`
-            )}
-          />
+          <CopyButton text={block.urlCompleta} />
         </div>
       </div>
     </div>
