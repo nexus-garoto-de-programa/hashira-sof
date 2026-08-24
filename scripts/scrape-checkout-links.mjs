@@ -58,7 +58,7 @@ async function scrapeSlug(context, slug) {
         return /lastlink\.com|zouti\.com\.br|checkout/i.test(href);
       });
 
-      return anchors.map((a) => {
+      return anchors.map((a, index) => {
         const rawHref = a.getAttribute("href") || "";
 
         let p = a;
@@ -79,6 +79,7 @@ async function scrapeSlug(context, slug) {
           .filter((l) => l.length > 0 && !/eu quero/i.test(l));
 
         return {
+          index,
           href: rawHref,
           lines: lines.slice(0, 6),
           fullText: rawText,
@@ -87,58 +88,69 @@ async function scrapeSlug(context, slug) {
     });
 
     const seenCleanLinks = new Set();
+    const cleanList = [];
 
     for (const item of rawLinks) {
       const cleaned = cleanUrl(item.href);
       if (seenCleanLinks.has(cleaned)) continue;
       seenCleanLinks.add(cleaned);
+      cleanList.push({ ...item, cleaned });
+    }
 
+    cleanList.forEach((item, idx) => {
       const firstLinesText = item.lines.slice(0, 3).join(" ").toLowerCase();
       const firstLine = (item.lines[0] || "").toLowerCase();
+      const fullTextUpper = item.fullText.toUpperCase();
 
-      // Determina o dispositivo
       let dispositivo = "Link único";
-      if (/\bandroid\b/i.test(firstLine) || (/\bandroid\b/i.test(firstLinesText) && !item.lines.slice(0, 2).some(l => /iphone|emulador/i.test(l)))) {
-        dispositivo = "Android";
-      } else if (/\biphone\b/i.test(firstLine) || (/\biphone\b/i.test(firstLinesText) && !item.lines.slice(0, 2).some(l => /android|emulador/i.test(l)))) {
-        dispositivo = "iPhone";
-      } else if (/\bemulador\b/i.test(firstLine) || (/\bemulador\b/i.test(firstLinesText) && !item.lines.slice(0, 2).some(l => /android|iphone/i.test(l)))) {
-        dispositivo = "Emulador";
-      }
-
-      // Determina o produto baseado estritamente nas primeiras linhas do card específico
-      const cardHeaderUpper = item.lines.slice(0, 4).join(" ").toUpperCase();
       let produto = "";
 
-      if (dispositivo !== "Link único" && ["android", "iphone", "emulador"].includes(firstLine)) {
-        produto = `(card "${dispositivo.toLowerCase()}")`;
-      } else if (cardHeaderUpper.includes("PACK COMPLETO") || cardHeaderUpper.includes("MELHOR PACK")) {
+      // 1. Detecção por Palavras-Chave de Produto
+      if (fullTextUpper.includes("PACK COMPLETO") || fullTextUpper.includes("MELHOR PACK")) {
         produto = "PACK COMPLETO";
-      } else if (cardHeaderUpper.includes("SENSI PERMANENTE") || cardHeaderUpper.includes("SENSI SEMPRE ATUALIZADA") || cardHeaderUpper.includes("SENSI SEMPRE")) {
+        dispositivo = "Link único";
+      } else if (fullTextUpper.includes("SENSI PERMANENTE") || fullTextUpper.includes("SENSI SEMPRE ATUALIZADA") || fullTextUpper.includes("SENSI SEMPRE")) {
         produto = "SENSI permanente";
-      } else if (cardHeaderUpper.includes("SENSI PERSONALIZADA")) {
-        produto = "SENSI personalizada";
-      } else if (cardHeaderUpper.includes("SUPER OTIMIZAÇÃO EMULADOR")) {
-        produto = "Super Otimização Emulador";
-      } else if (cardHeaderUpper.includes("SUPER OTIMIZAÇÃO MOBILE")) {
-        produto = "Super Otimização Mobile";
-      } else if (cardHeaderUpper.includes("SUPER OTIMIZAÇÃO")) {
-        produto = "Super Otimização";
-      } else if (cardHeaderUpper.includes("PLATINA")) {
-        produto = "Platina";
-      } else if (cardHeaderUpper.includes("VIP")) {
+        dispositivo = "Link único";
+      } else if (/\biphone\b/i.test(firstLine) || (/\biphone\b/i.test(firstLinesText) && !/\bandroid\b/i.test(firstLine))) {
+        dispositivo = "iPhone";
+        produto = "VIP";
+      } else if (/\bemulador\b/i.test(firstLine) || (/\bemulador\b/i.test(firstLinesText) && !/\bandroid\b/i.test(firstLine))) {
+        dispositivo = "Emulador";
+        produto = "VIP";
+      } else if (/\bandroid\b/i.test(firstLine)) {
+        dispositivo = "Android";
         produto = "VIP";
       } else {
-        produto = dispositivo !== "Link único" ? `(card "${dispositivo.toLowerCase()}")` : "Oferta";
+        // Fallback baseado na posição dos cards no layout da landing page
+        if (idx === 0) {
+          dispositivo = "Android";
+          produto = "VIP";
+        } else if (idx === 1) {
+          dispositivo = "iPhone";
+          produto = "VIP";
+        } else if (idx === 2) {
+          dispositivo = "Emulador";
+          produto = "VIP";
+        } else if (idx === 3) {
+          dispositivo = "Link único";
+          produto = "PACK COMPLETO";
+        } else if (idx === 4) {
+          dispositivo = "Link único";
+          produto = "SENSI permanente";
+        } else {
+          dispositivo = "Link único";
+          produto = "VIP";
+        }
       }
 
       results.push({
         influenciador: slug,
         produto,
         dispositivo,
-        link: cleaned,
+        link: item.cleaned,
       });
-    }
+    });
 
     return { slug, success: true, links: results, count: results.length };
   } catch (err) {

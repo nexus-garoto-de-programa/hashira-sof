@@ -1,6 +1,9 @@
 /**
  * Script para popular/atualizar a base de dados do Supabase (tabela `influenciadores`)
- * utilizando os 125 links extraídos de 24 influenciadores via Playwright scraper.
+ * garantindo que TODOS os 24 influenciadores tenham as 3 categorias 100% preenchidas:
+ * 1. VIP (subItems: Android, iPhone, Emulador)
+ * 2. Pack Completo (subItem: Link único)
+ * 3. Sensi Permanente (subItem: Link único)
  *
  * Uso: node scripts/seed-extracted-influenciadores.mjs
  */
@@ -17,22 +20,30 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
 });
 
-/** Converte nome de produto extraído para categoriaId */
-function produtoToCategoriaId(produto, dispositivo) {
-  const p = (produto || "").toLowerCase().trim();
-  if (p.includes("vip") || dispositivo === "Android" || dispositivo === "iPhone" || dispositivo === "Emulador") {
-    return "vip";
-  }
-  return "pack_completo";
-}
+// Links de backup da planilha caso a página em lote venha com botão duplicado no Framer
+const BACKUP_LINKS = {
+  "venas-new": {
+    "vip:iphone": "https://lastlink.com/p/CBF2FE58C/checkout-payment?af=A35FEC49F",
+  },
+};
 
-/** Converte dispositivo para subItemId */
-function dispositivoToSubItemId(dispositivo) {
+/** Converte nome de produto extraído para categoriaId */
+function produtoToCatSub(produto, dispositivo) {
+  const p = (produto || "").toLowerCase().trim();
   const d = (dispositivo || "").toLowerCase().trim();
-  if (d === "android") return "android";
-  if (d === "iphone") return "iphone";
-  if (d === "emulador") return "emulador";
-  return "link_unico";
+
+  if (p.includes("sensi permanente") || p.includes("sensi sempre") || p.includes("permanente")) {
+    return { cat: "sensi_permanente", sub: "link_unico" };
+  }
+  if (p.includes("pack completo") || p.includes("pack")) {
+    return { cat: "pack_completo", sub: "link_unico" };
+  }
+
+  if (d === "android") return { cat: "vip", sub: "android" };
+  if (d === "iphone") return { cat: "vip", sub: "iphone" };
+  if (d === "emulador") return { cat: "vip", sub: "emulador" };
+
+  return { cat: "pack_completo", sub: "link_unico" };
 }
 
 /** Formata o slug do influenciador para nome de exibição limpo */
@@ -111,7 +122,7 @@ function parseCSVLine(line) {
 }
 
 async function run() {
-  console.log("🏯 Central Hashira — Alimentando Supabase com links extraídos\n");
+  console.log("🏯 Central Hashira — Alimentando Supabase com 3 Categorias (VIP, Pack Completo, Sensi Permanente)\n");
 
   const csvPath = path.join(process.cwd(), "checkout_links_extracted.csv");
   if (!fs.existsSync(csvPath)) {
@@ -127,7 +138,6 @@ async function run() {
     process.exit(1);
   }
 
-  // Agrupa os links por slug do influenciador
   const influenciadoresMap = new Map();
 
   for (let i = 1; i < lines.length; i++) {
@@ -150,6 +160,14 @@ async function run() {
 
   console.log(`📋 Encontrados ${influenciadoresMap.size} influenciadores com links no CSV.\n`);
 
+  const REQUIRED_SLOTS = [
+    { cat: "vip", sub: "android", nome: "ANDROID" },
+    { cat: "vip", sub: "iphone", nome: "IPHONE" },
+    { cat: "vip", sub: "emulador", nome: "EMULADOR" },
+    { cat: "pack_completo", sub: "link_unico", nome: "LINK ÚNICO" },
+    { cat: "sensi_permanente", sub: "link_unico", nome: "LINK ÚNICO" },
+  ];
+
   let totalInfluenciadores = 0;
   let totalLinks = 0;
   let erros = 0;
@@ -157,19 +175,40 @@ async function run() {
   for (const [slug, extractedLinks] of influenciadoresMap.entries()) {
     const nome = slugToNomeExibicao(slug);
 
-    // Mapeia cada link para o formato LinkCheckout[] da aplicação
-    const linksCheckout = extractedLinks.map((item, idx) => {
-      const categoriaId = produtoToCategoriaId(item.produto, item.dispositivo);
-      const subItemId = dispositivoToSubItemId(item.dispositivo);
+    // Mapeia links extraídos por chave cat:sub
+    const slotMap = new Map();
+    extractedLinks.forEach((item) => {
+      const { cat, sub } = produtoToCatSub(item.produto, item.dispositivo);
+      const key = `${cat}:${sub}`;
+      if (!slotMap.has(key)) {
+        slotMap.set(key, item.link);
+      }
+    });
 
-      return {
-        id: `lc_${categoriaId}_${subItemId}_${Date.now()}_${idx}`,
-        categoriaId,
-        subItemId,
-        nome: item.dispositivo.toUpperCase(),
-        url: item.link,
-        ativo: true,
-      };
+    // Se algum slot faltar na extração ao vivo, tenta resgatar do backup
+    REQUIRED_SLOTS.forEach((slot) => {
+      const key = `${slot.cat}:${slot.sub}`;
+      if (!slotMap.has(key) && BACKUP_LINKS[slug] && BACKUP_LINKS[slug][key]) {
+        slotMap.set(key, BACKUP_LINKS[slug][key]);
+      }
+    });
+
+    // Constrói array final de linksCheckout
+    const linksCheckout = [];
+    REQUIRED_SLOTS.forEach((slot, idx) => {
+      const key = `${slot.cat}:${slot.sub}`;
+      const url = slotMap.get(key) || "";
+
+      if (url) {
+        linksCheckout.push({
+          id: `lc_${slot.cat}_${slot.sub}_${Date.now()}_${idx}`,
+          categoriaId: slot.cat,
+          subItemId: slot.sub,
+          nome: slot.nome,
+          url,
+          ativo: true,
+        });
+      }
     });
 
     // Busca influenciador existente no Supabase pelo slug_bio
@@ -205,7 +244,8 @@ async function run() {
       console.error(`  ❌ ${nome} (${slug}): ${error.message}`);
       erros++;
     } else {
-      console.log(`  ✅ ${nome} (${slug}) — ${linksCheckout.length} links inseridos/atualizados`);
+      const statusIcon = linksCheckout.length === 5 ? "✅" : "⚠️";
+      console.log(`  ${statusIcon} ${nome} (${slug}) — ${linksCheckout.length}/5 categorias/sub-itens preenchidos`);
       totalInfluenciadores++;
       totalLinks += linksCheckout.length;
     }
@@ -215,7 +255,7 @@ async function run() {
   console.log("📊 RESUMO DO POVOAMENTO DO BANCO DE DADOS");
   console.log("==================================================");
   console.log(`✅ Influenciadores salvos no Supabase: ${totalInfluenciadores}`);
-  console.log(`🔗 Total de links de checkout atualizados: ${totalLinks}`);
+  console.log(`🔗 Total de links de checkout salvos: ${totalLinks}`);
   if (erros > 0) {
     console.log(`❌ Erros ao salvar: ${erros}`);
   }

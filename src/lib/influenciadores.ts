@@ -45,6 +45,14 @@ export const CATEGORIAS_CHECKOUT_PREDEFINIDAS: CategoriaCheckoutConfig[] = [
       { id: "link_unico", label: "LINK ÚNICO" },
     ],
   },
+  {
+    id: "sensi_permanente",
+    titulo: "Sensi Permanente",
+    icone: "🎯",
+    subItems: [
+      { id: "link_unico", label: "LINK ÚNICO" },
+    ],
+  },
 ];
 
 export interface Influenciador {
