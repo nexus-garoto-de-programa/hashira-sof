@@ -188,6 +188,11 @@ export function mapOperacoesRowToDemanda(row: any): Demanda {
 }
 
 export function mapSupabaseRowToDemanda(row: any): Demanda {
+  const hojeStr = new Date().toISOString().split("T")[0];
+  let status: StatusDemanda = row.status || "pendente";
+  if (status !== "concluida" && row.prazo && row.prazo < hojeStr) {
+    status = "atrasada";
+  }
   return {
     id: row.id,
     titulo: row.titulo,
@@ -199,10 +204,10 @@ export function mapSupabaseRowToDemanda(row: any): Demanda {
     colaboradorNome: row.colaborador_nome || row.colaboradorNome,
     colaboradorEmail: row.colaborador_email || row.colaboradorEmail,
     colaboradorAvatar: row.colaborador_avatar || row.colaboradorAvatar,
-    prazo: row.prazo || new Date().toISOString().split("T")[0],
+    prazo: row.prazo || hojeStr,
     prioridade: row.prioridade || "media",
-    status: row.status || "pendente",
-    progresso: row.progresso ?? 0,
+    status,
+    progresso: status === "concluida" ? 100 : (row.progresso ?? 0),
     anexos: Array.isArray(row.anexos) ? row.anexos : [],
     historico: Array.isArray(row.historico) ? row.historico : [],
     criadoEm: row.criado_em || row.criadoEm || new Date().toISOString(),
@@ -255,7 +260,21 @@ export async function fetchDemandasFromSupabase(): Promise<Demanda[]> {
     if (operData && operData.length > 0) {
       operData.forEach((row) => {
         const d = mapOperacoesRowToDemanda(row);
-        demandasMap.set(d.id, d);
+        const existingLeg = demandasMap.get(d.id);
+        if (existingLeg) {
+          const isConcluida = existingLeg.status === "concluida" || d.status === "concluida";
+          demandasMap.set(d.id, {
+            ...existingLeg,
+            ...d,
+            status: isConcluida ? "concluida" : d.status,
+            progresso: isConcluida ? 100 : d.progresso,
+            anexos: existingLeg.anexos && existingLeg.anexos.length > 0 ? existingLeg.anexos : d.anexos,
+            historico: existingLeg.historico && existingLeg.historico.length > 0 ? existingLeg.historico : d.historico,
+            colaboradorEmail: existingLeg.colaboradorEmail || d.colaboradorEmail,
+          });
+        } else {
+          demandasMap.set(d.id, d);
+        }
       });
     }
 

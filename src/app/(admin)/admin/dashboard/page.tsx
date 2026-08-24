@@ -221,6 +221,43 @@ export default function AdminDashboardPage() {
     toast.success("Demanda removida");
   };
 
+  const handleUpdateStatus = async (demandaId: string, newStatus: any, comentario?: string) => {
+    let demandaAtualizada: Demanda | null = null;
+
+    const atualizadas = demandas.map((d) => {
+      if (d.id === demandaId) {
+        const novoProgresso = newStatus === "concluida" ? 100 : newStatus === "em_andamento" ? 50 : 10;
+        const novoHistorico = [...d.historico];
+        if (comentario) {
+          novoHistorico.push({
+            id: "h-" + Date.now(),
+            usuarioNome: "Administrador Central",
+            acao: `Status alterado para ${newStatus.replace("_", " ")}`,
+            data: new Date().toISOString().slice(0, 16).replace("T", " "),
+            comentario,
+          });
+        }
+        demandaAtualizada = {
+          ...d,
+          status: newStatus,
+          progresso: novoProgresso,
+          historico: novoHistorico,
+        };
+        return demandaAtualizada;
+      }
+      return d;
+    });
+
+    updateDemandas(atualizadas);
+    if (selectedDemanda && selectedDemanda.id === demandaId && demandaAtualizada) {
+      setSelectedDemanda(demandaAtualizada);
+    }
+
+    if (demandaAtualizada) {
+      await saveDemandaToSupabase(demandaAtualizada);
+    }
+  };
+
   const handleCreateDemanda = async (nova: Omit<Demanda, "id" | "criadoEm">) => {
     const id = "dem-" + Date.now();
     const objetoCompleto: Demanda = {
@@ -894,6 +931,7 @@ export default function AdminDashboardPage() {
         open={!!selectedDemanda}
         demanda={selectedDemanda}
         onClose={() => setSelectedDemanda(null)}
+        onUpdateStatus={handleUpdateStatus}
       />
     </div>
   );

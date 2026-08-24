@@ -283,7 +283,15 @@ export const DemandDetailModal: React.FC<DemandDetailModalProps> = ({
 
           {/* Footer */}
           <div className="p-4 flex justify-end" style={{ backgroundColor: 'var(--surface-alt)', borderTop: '1px solid var(--border)' }}>
-            <button onClick={onClose} className="coursue-btn-primary px-6 py-2.5 text-xs">
+            <button
+              onClick={() => {
+                if (currentStatus !== "concluida") {
+                  handleStatusChange("concluida");
+                }
+                onClose();
+              }}
+              className="coursue-btn-primary px-6 py-2.5 text-xs"
+            >
               Concluir e Fechar
             </button>
           </div>

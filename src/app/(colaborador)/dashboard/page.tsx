@@ -210,7 +210,9 @@ export default function CollaboratorDashboardPage() {
     return { name: diaLabel, concluida: count };
   });
 
-  const handleUpdateStatus = (demandaId: string, newStatus: StatusDemanda, comentario?: string) => {
+  const handleUpdateStatus = async (demandaId: string, newStatus: StatusDemanda, comentario?: string) => {
+    let demandaAtualizada: Demanda | null = null;
+
     const atualizadas = demandas.map((d) => {
       if (d.id === demandaId) {
         const novoProgresso = newStatus === "concluida" ? 100 : newStatus === "em_andamento" ? 50 : 10;
@@ -224,19 +226,24 @@ export default function CollaboratorDashboardPage() {
             comentario,
           });
         }
-        return {
+        demandaAtualizada = {
           ...d,
           status: newStatus,
           progresso: novoProgresso,
           historico: novoHistorico,
         };
+        return demandaAtualizada;
       }
       return d;
     });
 
     updateDemandasState(atualizadas);
-    if (selectedDemanda && selectedDemanda.id === demandaId) {
-      setSelectedDemanda((prev) => (prev ? { ...prev, status: newStatus } : null));
+    if (selectedDemanda && selectedDemanda.id === demandaId && demandaAtualizada) {
+      setSelectedDemanda(demandaAtualizada);
+    }
+
+    if (demandaAtualizada) {
+      await saveDemandaToSupabase(demandaAtualizada);
     }
   };
 
