@@ -28,16 +28,6 @@ export interface CategoriaCheckoutConfig {
 
 export const CATEGORIAS_CHECKOUT_PREDEFINIDAS: CategoriaCheckoutConfig[] = [
   {
-    id: "platina",
-    titulo: "Platina",
-    icone: "💎",
-    subItems: [
-      { id: "android", label: "ANDROID" },
-      { id: "iphone", label: "IPHONE" },
-      { id: "emulador", label: "EMULADOR" },
-    ],
-  },
-  {
     id: "vip",
     titulo: "VIP",
     icone: "💛",

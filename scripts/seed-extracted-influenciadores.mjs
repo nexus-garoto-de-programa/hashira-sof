@@ -20,11 +20,7 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 /** Converte nome de produto extraído para categoriaId */
 function produtoToCategoriaId(produto, dispositivo) {
   const p = (produto || "").toLowerCase().trim();
-  if (p.includes("platina")) return "platina";
-  if (p.includes("vip")) return "vip";
-
-  // Se o card for por dispositivo (ex: card "android"), usa "vip" por padrão
-  if (dispositivo === "Android" || dispositivo === "iPhone" || dispositivo === "Emulador") {
+  if (p.includes("vip") || dispositivo === "Android" || dispositivo === "iPhone" || dispositivo === "Emulador") {
     return "vip";
   }
   return "pack_completo";
