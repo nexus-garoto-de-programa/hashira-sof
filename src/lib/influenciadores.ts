@@ -55,38 +55,6 @@ export const CATEGORIAS_CHECKOUT_PREDEFINIDAS: CategoriaCheckoutConfig[] = [
       { id: "link_unico", label: "LINK ÚNICO" },
     ],
   },
-  {
-    id: "sensi_permanente",
-    titulo: "Sensi Permanente",
-    icone: "🎯",
-    subItems: [
-      { id: "link_unico", label: "LINK ÚNICO" },
-    ],
-  },
-  {
-    id: "sensi_personalizada",
-    titulo: "Sensi Personalizada",
-    icone: "🎨",
-    subItems: [
-      { id: "link_unico", label: "LINK ÚNICO" },
-    ],
-  },
-  {
-    id: "super_otimizacao_emulador",
-    titulo: "Super Otimização Emulador",
-    icone: "🖥️",
-    subItems: [
-      { id: "link_unico", label: "LINK ÚNICO" },
-    ],
-  },
-  {
-    id: "super_otimizacao_mobile",
-    titulo: "Super Otimização Mobile",
-    icone: "📱",
-    subItems: [
-      { id: "link_unico", label: "LINK ÚNICO" },
-    ],
-  },
 ];
 
 export interface Influenciador {

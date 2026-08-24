@@ -20,12 +20,6 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 /** Converte nome de produto extraído para categoriaId */
 function produtoToCategoriaId(produto, dispositivo) {
   const p = (produto || "").toLowerCase().trim();
-  if (p.includes("pack completo") || p.includes("pack")) return "pack_completo";
-  if (p.includes("sensi permanente") || p.includes("sensi sempre")) return "sensi_permanente";
-  if (p.includes("sensi personalizada")) return "sensi_personalizada";
-  if (p.includes("super otimização emulador")) return "super_otimizacao_emulador";
-  if (p.includes("super otimização mobile")) return "super_otimizacao_mobile";
-  if (p.includes("super otimização") || p.includes("otimização")) return "super_otimizacao_emulador";
   if (p.includes("platina")) return "platina";
   if (p.includes("vip")) return "vip";
 
