@@ -28,6 +28,16 @@ export interface CategoriaCheckoutConfig {
 
 export const CATEGORIAS_CHECKOUT_PREDEFINIDAS: CategoriaCheckoutConfig[] = [
   {
+    id: "platina",
+    titulo: "Platina",
+    icone: "💎",
+    subItems: [
+      { id: "android", label: "ANDROID" },
+      { id: "iphone", label: "IPHONE" },
+      { id: "emulador", label: "EMULADOR" },
+    ],
+  },
+  {
     id: "vip",
     titulo: "VIP",
     icone: "💛",
@@ -40,7 +50,7 @@ export const CATEGORIAS_CHECKOUT_PREDEFINIDAS: CategoriaCheckoutConfig[] = [
   {
     id: "pack_completo",
     titulo: "Pack Completo",
-    icone: "💛",
+    icone: "📦",
     subItems: [
       { id: "link_unico", label: "LINK ÚNICO" },
     ],
@@ -48,7 +58,31 @@ export const CATEGORIAS_CHECKOUT_PREDEFINIDAS: CategoriaCheckoutConfig[] = [
   {
     id: "sensi_permanente",
     titulo: "Sensi Permanente",
-    icone: "💛",
+    icone: "🎯",
+    subItems: [
+      { id: "link_unico", label: "LINK ÚNICO" },
+    ],
+  },
+  {
+    id: "sensi_personalizada",
+    titulo: "Sensi Personalizada",
+    icone: "🎨",
+    subItems: [
+      { id: "link_unico", label: "LINK ÚNICO" },
+    ],
+  },
+  {
+    id: "super_otimizacao_emulador",
+    titulo: "Super Otimização Emulador",
+    icone: "🖥️",
+    subItems: [
+      { id: "link_unico", label: "LINK ÚNICO" },
+    ],
+  },
+  {
+    id: "super_otimizacao_mobile",
+    titulo: "Super Otimização Mobile",
+    icone: "📱",
     subItems: [
       { id: "link_unico", label: "LINK ÚNICO" },
     ],

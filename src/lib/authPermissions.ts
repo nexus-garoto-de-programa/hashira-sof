@@ -9,6 +9,7 @@ export interface UserPermissions {
   acessoDriveDesignTab: boolean;
   acessoAdminPanorama: boolean;
   acessoCDI: boolean;
+  acessoInfluenciadoresTab: boolean;
 }
 
 export interface UserAccount {
@@ -38,6 +39,7 @@ export const DEFAULT_COLLABORATOR_PERMISSIONS: UserPermissions = {
   acessoDriveDesignTab: true,
   acessoAdminPanorama: false,
   acessoCDI: false,
+  acessoInfluenciadoresTab: false,
 };
 
 export const ADMIN_PERMISSIONS: UserPermissions = {
@@ -51,6 +53,7 @@ export const ADMIN_PERMISSIONS: UserPermissions = {
   acessoDriveDesignTab: true,
   acessoAdminPanorama: true,
   acessoCDI: true,
+  acessoInfluenciadoresTab: true,
 };
 
 export const USERS_SEED: UserAccount[] = [
@@ -312,6 +315,7 @@ export function normalizeUserAccount(raw: any): UserAccount {
       acessoDriveDesignTab: raw.permissoes?.acessoDriveDesignTab ?? true,
       acessoAdminPanorama: raw.permissoes?.acessoAdminPanorama ?? (papel === "administrador"),
       acessoCDI: raw.permissoes?.acessoCDI ?? (papel === "administrador"),
+      acessoInfluenciadoresTab: raw.permissoes?.acessoInfluenciadoresTab ?? (papel === "administrador"),
     },
   };
 }
