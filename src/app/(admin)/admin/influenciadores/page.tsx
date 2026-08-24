@@ -3,12 +3,13 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { UserRoundPlus, Search, Users, ChevronRight, ToggleLeft, ToggleRight } from "lucide-react";
+import { UserRoundPlus, Search, Users, ChevronRight, ToggleLeft, ToggleRight, Trash2 } from "lucide-react";
 import {
   Influenciador,
   fetchInfluenciadoresFromSupabase,
   getStoredInfluenciadores,
   saveInfluenciadorToSupabase,
+  deleteInfluenciadorFromSupabase,
 } from "@/lib/influenciadores";
 import { AppSidebar } from "@/components/AppSidebar";
 import { CreateInfluenciadorModal } from "@/components/influenciadores/CreateInfluenciadorModal";
@@ -64,6 +65,26 @@ export default function InfluenciadoresListPage() {
   const handleSaveNovo = async (inf: Influenciador) => {
     await saveInfluenciadorToSupabase(inf);
     toast.success(`Influenciador "${inf.nome}" cadastrado com sucesso!`);
+    carregarDados();
+  };
+
+  const handleToggleAtivo = async (e: React.MouseEvent, inf: Influenciador) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const novoStatus = !inf.ativo;
+    await saveInfluenciadorToSupabase({ ...inf, ativo: novoStatus });
+    toast.success(`Influenciador "${inf.nome}" ${novoStatus ? "ativado" : "desativado"}.`);
+    carregarDados();
+  };
+
+  const handleDelete = async (e: React.MouseEvent, inf: Influenciador) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!confirm(`Tem certeza que deseja remover "${inf.nome}" permanentemente da grade?`)) {
+      return;
+    }
+    await deleteInfluenciadorFromSupabase(inf.id);
+    toast.success(`Influenciador "${inf.nome}" removido da grade.`);
     carregarDados();
   };
 
@@ -230,10 +251,33 @@ export default function InfluenciadoresListPage() {
                           </p>
                         </div>
 
-                        <ChevronRight
-                          className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5"
-                          style={{ color: "var(--text-muted)" }}
-                        />
+                        {/* Ações Rápidas */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleAtivo(e, inf)}
+                            className="p-2 rounded-xl transition-colors text-gray-400 hover:text-amber-500 hover:bg-amber-500/10"
+                            title={inf.ativo ? "Desativar influenciador" : "Ativar influenciador"}
+                          >
+                            {inf.ativo ? (
+                              <ToggleRight className="w-5 h-5 text-emerald-500" />
+                            ) : (
+                              <ToggleLeft className="w-5 h-5 text-gray-400" />
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleDelete(e, inf)}
+                            className="p-2 rounded-xl text-gray-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
+                            title={`Remover ${inf.nome}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                          <ChevronRight
+                            className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5"
+                            style={{ color: "var(--text-muted)" }}
+                          />
+                        </div>
                       </div>
                     </button>
                   </motion.div>
