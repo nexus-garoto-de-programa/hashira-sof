@@ -18,16 +18,17 @@ interface CheckoutCategoriasViewProps {
   somenteLeitura?: boolean;
 }
 
-function CopyButton({ text }: { text: string }) {
+function CopyButton({ text, formattedText, label }: { text: string; formattedText?: string; label?: string }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = async () => {
+    const textToCopy = formattedText || text;
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(textToCopy);
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {
       const el = document.createElement("textarea");
-      el.value = text;
+      el.value = textToCopy;
       document.body.appendChild(el);
       el.select();
       document.execCommand("copy");
@@ -39,7 +40,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      title={copied ? "Copiado!" : "Copiar"}
+      title={copied ? "Copiado!" : label || "Copiar"}
       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0"
       style={{
         backgroundColor: copied ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.06)",
@@ -48,7 +49,7 @@ function CopyButton({ text }: { text: string }) {
       }}
     >
       {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-      <span>{copied ? "Copiado!" : "Copiar"}</span>
+      <span>{copied ? "Copiado!" : label || "Copiar"}</span>
     </button>
   );
 }
@@ -120,6 +121,11 @@ export function CheckoutCategoriasView({
         <p className="text-xs font-bold uppercase tracking-wider text-amber-500/80">
           Categorias de Oferta &amp; Checkout
         </p>
+        <CopyButton
+          text=""
+          formattedText={formatarTodosLinksCheckout(influenciador)}
+          label="Copiar Todos os Links de Checkout 🛒"
+        />
       </div>
 
       {CATEGORIAS_CHECKOUT_PREDEFINIDAS.map((cat) => (

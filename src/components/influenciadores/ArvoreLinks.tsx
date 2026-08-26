@@ -66,6 +66,18 @@ export function ArvoreLinks({ influenciador, somenteLeitura = false }: ArvoreLin
 
   return (
     <div className="space-y-4">
+      {/* Cabeçalho com botão para copiar o pacote da Árvore de Links */}
+      <div className="flex items-center justify-between flex-wrap gap-3 pb-1">
+        <p className="text-xs font-bold uppercase tracking-wider text-[#5B50E5]">
+          Árvore de Links (biohashira)
+        </p>
+        <CopyButton
+          text=""
+          formattedText={formatarTodaArvoreLinks(influenciador)}
+          label="Copiar Pacote da Árvore de Links 🌳"
+        />
+      </div>
+
       {/* Linha raiz */}
       <div
         className="rounded-2xl p-4"
