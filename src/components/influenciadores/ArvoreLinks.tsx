@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
-import { Copy, Check, ExternalLink, Share2 } from "lucide-react";
+import { Copy, Check, ExternalLink, Building2 } from "lucide-react";
 import {
   Influenciador,
   generateArvoreLinks,
-  getArvoreRaiz,
-  ArvoreLink,
+  getUrlBioHashira,
+  getSlugBioHashira,
   formatarLinkComAssinatura,
   formatarTodaArvoreLinks,
 } from "@/lib/influenciadores";
@@ -59,10 +59,30 @@ const PLATAFORMA_META: Record<string, { emoji: string; color: string; bg: string
 };
 
 export function ArvoreLinks({ influenciador, somenteLeitura = false }: ArvoreLinksProps) {
-  const raiz = getArvoreRaiz(influenciador);
+  if (influenciador.ehContaInterna) {
+    return (
+      <div
+        className="rounded-3xl p-8 text-center space-y-3"
+        style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}
+      >
+        <div className="w-14 h-14 mx-auto rounded-2xl bg-[#5B50E5]/15 flex items-center justify-center">
+          <Building2 className="w-7 h-7 text-[#5B50E5]" />
+        </div>
+        <h3 className="text-base font-extrabold" style={{ color: "var(--text-primary)" }}>
+          Conta Interna / Institucional
+        </h3>
+        <p className="text-xs max-w-md mx-auto" style={{ color: "var(--text-muted)" }}>
+          Esta conta foi configurada como canal institucional interno e não possui árvore de bio-links no biohashira.com.br.
+        </p>
+      </div>
+    );
+  }
+
+  const raiz = getUrlBioHashira(influenciador);
   const links = generateArvoreLinks(influenciador);
   const arvore = (influenciador.urlArvore || "biohashira.com.br").replace(/\/$/, "");
-  const slug = influenciador.slugBio;
+  const slug = getSlugBioHashira(influenciador);
+  const nome = influenciador.nomeExibicao || influenciador.nome || slug;
 
   return (
     <div className="space-y-4">
@@ -104,7 +124,7 @@ export function ArvoreLinks({ influenciador, somenteLeitura = false }: ArvoreLin
           <CopyButton
             text={raiz}
             formattedText={formatarLinkComAssinatura(
-              `Árvore de Links — Raiz (${influenciador.nome})`,
+              `Árvore de Links — Raiz (${nome})`,
               raiz
             )}
           />

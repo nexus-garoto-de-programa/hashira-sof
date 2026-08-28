@@ -90,7 +90,7 @@ const SEED_DATA = [
     ]
   },
   {
-    "nomeIdentificador": "drey-new2",
+    "nomeIdentificador": "drey-new",
     "nomeExibicao": "Drey",
     "totalLinks": 6,
     "checkoutLinks": [
@@ -392,6 +392,42 @@ const SEED_DATA = [
 // EXECUÇÃO PRINCIPAL
 // ─────────────────────────────────────────────
 
+const TABELA_CONVERSAO = {
+  "astorga-new": { slugBase: "astorga", sufixoVendas: "-new", ehContaInterna: false },
+  "dak-new": { slugBase: "dak", sufixoVendas: "-new", ehContaInterna: false },
+  "drey-new": { slugBase: "drey", sufixoVendas: "-new", ehContaInterna: false },
+  "drey-new2": { slugBase: "drey", sufixoVendas: "-new", ehContaInterna: false },
+  "extryze-new": { slugBase: "extryze", sufixoVendas: "-new", ehContaInterna: false },
+  "faewl-new": { slugBase: "faewl", sufixoVendas: "-new", ehContaInterna: false },
+  "guardian-new": { slugBase: "guardian", sufixoVendas: "-new", ehContaInterna: false },
+  "hashira-principal": { slugBase: "hashira-principal", sufixoVendas: "customizado", slugVendasCustomizado: "hashira-principal", ehContaInterna: true },
+  "hashira-trafego-pago": { slugBase: "hashira-trafego-pago", sufixoVendas: "customizado", slugVendasCustomizado: "hashira-trafego-pago", ehContaInterna: true },
+  "ldzinn-new": { slugBase: "ldzinn", sufixoVendas: "-new", ehContaInterna: false },
+  "lia-vendas": { slugBase: "lia", sufixoVendas: "-vendas", ehContaInterna: false },
+  "macedo-vendas": { slugBase: "macedo", sufixoVendas: "-vendas", ehContaInterna: false },
+  "manomax-new": { slugBase: "manomax", sufixoVendas: "-new", ehContaInterna: false },
+  "mazoti-vendas": { slugBase: "mazoti", sufixoVendas: "-vendas", ehContaInterna: false },
+  "mendes-new": { slugBase: "mendes", sufixoVendas: "-new", ehContaInterna: false },
+  "nawt-new": { slugBase: "nawt", sufixoVendas: "-new", ehContaInterna: false },
+  "play-vendas": { slugBase: "play", sufixoVendas: "-vendas", ehContaInterna: false },
+  "strang-new": { slugBase: "strang", sufixoVendas: "-new", ehContaInterna: false },
+  "venas-new": { slugBase: "venas", sufixoVendas: "-new", ehContaInterna: false },
+  "wyus-new": { slugBase: "wyus", sufixoVendas: "-new", ehContaInterna: false },
+  "xarada-new": { slugBase: "xarada", sufixoVendas: "-new", ehContaInterna: false },
+  "xnapp-new": { slugBase: "xnapp", sufixoVendas: "-new", ehContaInterna: false },
+  "zbianca-new": { slugBase: "zbianca", sufixoVendas: "-new", ehContaInterna: false },
+};
+
+function inferirSlugInfo(nomeIdentificador) {
+  const chave = (nomeIdentificador || "").toLowerCase().trim();
+  if (TABELA_CONVERSAO[chave]) return TABELA_CONVERSAO[chave];
+  // Normaliza -new2 legado para -new
+  if (chave.endsWith("-new2")) return { slugBase: chave.replace(/-new2$/, ""), sufixoVendas: "-new", ehContaInterna: false };
+  if (chave.endsWith("-vendas")) return { slugBase: chave.replace(/-vendas$/, ""), sufixoVendas: "-vendas", ehContaInterna: false };
+  if (chave.endsWith("-new")) return { slugBase: chave.replace(/-new$/, ""), sufixoVendas: "-new", ehContaInterna: false };
+  return { slugBase: chave, sufixoVendas: "", ehContaInterna: false };
+}
+
 async function run() {
   console.log("🏯 Central Hashira — Seed de Influenciadores");
   console.log(`📋 ${SEED_DATA.length} influenciadores para processar\n`);
@@ -401,8 +437,10 @@ async function run() {
   let erros = 0;
 
   for (const seed of SEED_DATA) {
-    const slug = seed.nomeIdentificador;
+    const rawIdentificador = seed.nomeIdentificador;
     const nome = seed.nomeExibicao;
+    const { slugBase, sufixoVendas, slugVendasCustomizado, ehContaInterna } = inferirSlugInfo(rawIdentificador);
+    const slugVendas = sufixoVendas === "customizado" ? (slugVendasCustomizado || slugBase) : `${slugBase}${sufixoVendas}`;
 
     // Converte checkoutLinks da planilha para o formato LinkCheckout[] do sistema
     const linksCheckout = seed.checkoutLinks.map((cl, idx) => {
@@ -418,21 +456,27 @@ async function run() {
       };
     });
 
-    // Verifica se já existe pelo slug_bio
+    // Verifica se já existe pelo slugBase (slug_bio)
     const { data: existing } = await supabase
       .from("influenciadores")
-      .select("id")
-      .eq("slug_bio", slug)
+      .select("id, foto_url")
+      .or(`slug_bio.eq.${slugBase},slug_bio.eq.${rawIdentificador}`)
       .maybeSingle();
 
     const id = existing?.id || generateUUID();
+    const fotoUrl = existing?.foto_url || "";
 
     const row = {
       id,
       nome,
-      slug_bio: slug,
-      slug_principal: slug,
-      foto_url: "",
+      slug_bio: slugBase,
+      slug_principal: slugVendas,
+      slug_base: slugBase,
+      sufixo_vendas: sufixoVendas,
+      slug_vendas_customizado: slugVendasCustomizado || null,
+      eh_conta_interna: Boolean(ehContaInterna),
+      nome_exibicao: nome,
+      foto_url: fotoUrl,
       url_base: "hashirasensix.com.br",
       url_arvore: "biohashira.com.br",
       utm_source_padrao: "beacons",
@@ -442,15 +486,29 @@ async function run() {
       criado_por: "seed-script",
     };
 
-    const { error } = await supabase
+    let { error } = await supabase
       .from("influenciadores")
       .upsert(row, { onConflict: "id" });
 
+    if (error && error.message?.includes("column")) {
+      const rowLegado = { ...row };
+      delete rowLegado.slug_base;
+      delete rowLegado.sufixo_vendas;
+      delete rowLegado.slug_vendas_customizado;
+      delete rowLegado.eh_conta_interna;
+      delete rowLegado.nome_exibicao;
+
+      const { error: errLegado } = await supabase
+        .from("influenciadores")
+        .upsert(rowLegado, { onConflict: "id" });
+      error = errLegado;
+    }
+
     if (error) {
-      console.error(`  ❌ ${nome} (${slug}): ${error.message}`);
+      console.error(`  ❌ ${nome} (${slugBase}): ${error.message}`);
       erros++;
     } else {
-      console.log(`  ✅ ${nome} (${slug}) — ${linksCheckout.length} links`);
+      console.log(`  ✅ ${nome} (${slugBase} | bio: /${slugBase} | vendas: /${slugVendas}) — ${linksCheckout.length} links`);
       totalInfluenciadores++;
       totalLinks += linksCheckout.length;
     }

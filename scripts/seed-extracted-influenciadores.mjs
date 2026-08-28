@@ -211,11 +211,30 @@ async function run() {
       }
     });
 
-    // Busca influenciador existente no Supabase pelo slug_bio
+    // Infere slugBase e sufixo de vendas
+    const isInterna = slug === "hashira-principal" || slug === "hashira-trafego-pago";
+    let slugBase = slug;
+    let sufixoVendas = "-new";
+    if (isInterna) {
+      sufixoVendas = "customizado";
+    } else if (slug.endsWith("-new2")) {
+      slugBase = slug.replace(/-new2$/, "");
+      sufixoVendas = "-new";
+    } else if (slug.endsWith("-vendas")) {
+      slugBase = slug.replace(/-vendas$/, "");
+      sufixoVendas = "-vendas";
+    } else if (slug.endsWith("-new")) {
+      slugBase = slug.replace(/-new$/, "");
+      sufixoVendas = "-new";
+    }
+
+    const slugVendas = isInterna ? slug : `${slugBase}${sufixoVendas}`;
+
+    // Busca influenciador existente no Supabase pelo slugBase
     const { data: existing } = await supabase
       .from("influenciadores")
       .select("id, foto_url")
-      .eq("slug_bio", slug)
+      .or(`slug_bio.eq.${slugBase},slug_bio.eq.${slug}`)
       .maybeSingle();
 
     const id = existing?.id || generateUUID();
@@ -224,8 +243,13 @@ async function run() {
     const row = {
       id,
       nome,
-      slug_bio: slug,
-      slug_principal: slug,
+      slug_bio: slugBase,
+      slug_principal: slugVendas,
+      slug_base: slugBase,
+      sufixo_vendas: sufixoVendas,
+      slug_vendas_customizado: isInterna ? slug : null,
+      eh_conta_interna: isInterna,
+      nome_exibicao: nome,
       foto_url: fotoUrl,
       url_base: "hashirasensix.com.br",
       url_arvore: "biohashira.com.br",
@@ -236,9 +260,23 @@ async function run() {
       criado_por: "playwright-scraper-seed",
     };
 
-    const { error } = await supabase
+    let { error } = await supabase
       .from("influenciadores")
       .upsert(row, { onConflict: "id" });
+
+    if (error && error.message?.includes("column")) {
+      const rowLegado = { ...row };
+      delete rowLegado.slug_base;
+      delete rowLegado.sufixo_vendas;
+      delete rowLegado.slug_vendas_customizado;
+      delete rowLegado.eh_conta_interna;
+      delete rowLegado.nome_exibicao;
+
+      const { error: errLegado } = await supabase
+        .from("influenciadores")
+        .upsert(rowLegado, { onConflict: "id" });
+      error = errLegado;
+    }
 
     if (error) {
       console.error(`  ❌ ${nome} (${slug}): ${error.message}`);

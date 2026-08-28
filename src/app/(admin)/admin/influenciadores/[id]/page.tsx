@@ -9,7 +9,6 @@ import {
   ShoppingCart,
   TreePine,
   Settings,
-  Plus,
   RefreshCw,
   Upload,
   Copy,
@@ -17,27 +16,35 @@ import {
   Save,
   Trash2,
   Globe,
+  Sparkles,
+  CheckCircle2,
+  AlertCircle,
+  Building2,
+  ShoppingBag,
 } from "lucide-react";
 import {
   Influenciador,
-  LinkCheckout,
+  SufixoVendas,
+  SUFIXOS_VENDAS_OPCOES,
   fetchInfluenciadoresFromSupabase,
   getStoredInfluenciadores,
   saveInfluenciadorToSupabase,
   deleteInfluenciadorFromSupabase,
   generateUTMLinks,
   generateTokenAcessoRapido,
-  addLinkCheckout,
-  updateLinkCheckout,
-  removeLinkCheckout,
   formatarTodosLinksUTM,
   formatarPacoteCompletoInfluenciador,
   formatarLinkComAssinatura,
+  getSlugBioHashira,
+  getSlugHashirasensix,
+  getUrlBioHashira,
+  getUrlHashirasensix,
+  normalizarSlug,
+  validarSlugBase,
 } from "@/lib/influenciadores";
 import { uploadFileToSupabaseStorage } from "@/lib/supabase";
 import { AppSidebar } from "@/components/AppSidebar";
 import { UTMLinkBlock } from "@/components/influenciadores/UTMLinkBlock";
-import { LinkCheckoutItem } from "@/components/influenciadores/LinkCheckoutItem";
 import { ArvoreLinks } from "@/components/influenciadores/ArvoreLinks";
 import { CheckoutCategoriasView } from "@/components/influenciadores/CheckoutCategoriasView";
 import { useRealtimeSubscription } from "@/lib/realtimeSync";
@@ -98,19 +105,16 @@ export default function InfluenciadorDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Config form state
-  const [editNome, setEditNome] = useState("");
-  const [editSlugBio, setEditSlugBio] = useState("");
-  const [editSlugPrincipal, setEditSlugPrincipal] = useState("");
+  // Estados do formulário de Configurações unificado
+  const [editSlugBase, setEditSlugBase] = useState("");
+  const [editNomeExibicao, setEditNomeExibicao] = useState("");
+  const [editSufixoVendas, setEditSufixoVendas] = useState<SufixoVendas>("-new");
+  const [editSlugVendasCustomizado, setEditSlugVendasCustomizado] = useState("");
+  const [editEhContaInterna, setEditEhContaInterna] = useState(false);
   const [editUrlBase, setEditUrlBase] = useState("");
   const [editUtmSource, setEditUtmSource] = useState("");
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Novo link checkout
-  const [showAddCheckout, setShowAddCheckout] = useState(false);
-  const [novoCheckoutNome, setNovoCheckoutNome] = useState("");
-  const [novoCheckoutUrl, setNovoCheckoutUrl] = useState("");
 
   // Proteção de rota
   useEffect(() => {
@@ -120,6 +124,17 @@ export default function InfluenciadorDetailPage() {
       router.push("/dashboard");
     }
   }, [router]);
+
+  const syncFormState = (inf: Influenciador) => {
+    setInfluenciador(inf);
+    setEditSlugBase(inf.slugBase);
+    setEditNomeExibicao(inf.nomeExibicao || inf.nome || "");
+    setEditSufixoVendas(inf.sufixoVendas || "-new");
+    setEditSlugVendasCustomizado(inf.slugVendasCustomizado || "");
+    setEditEhContaInterna(Boolean(inf.ehContaInterna));
+    setEditUrlBase(inf.urlBase || "hashirasensix.com.br");
+    setEditUtmSource(inf.utmSourcePadrao || "beacons");
+  };
 
   const carregarDados = async () => {
     setLoading(true);
@@ -141,15 +156,6 @@ export default function InfluenciadorDetailPage() {
     }
   };
 
-  function syncFormState(inf: Influenciador) {
-    setInfluenciador(inf);
-    setEditNome(inf.nome);
-    setEditSlugBio(inf.slugBio);
-    setEditSlugPrincipal(inf.slugPrincipal);
-    setEditUrlBase(inf.urlBase);
-    setEditUtmSource(inf.utmSourcePadrao);
-  }
-
   useEffect(() => { carregarDados(); }, [id]);
 
   useRealtimeSubscription({
@@ -168,14 +174,46 @@ export default function InfluenciadorDetailPage() {
   const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!influenciador) return;
-    await handleSave({
+
+    const validacao = validarSlugBase(editSlugBase);
+    if (!validacao.valido) {
+      toast.error(validacao.erro || "Slug base inválido");
+      return;
+    }
+
+    if (!editNomeExibicao.trim()) {
+      toast.error("Informe o nome de exibição");
+      return;
+    }
+
+    if (editSufixoVendas === "customizado" && !editSlugVendasCustomizado.trim()) {
+      toast.error("Informe o slug de vendas customizado");
+      return;
+    }
+
+    // Checa duplicidade do slugBase com outros influenciadores
+    const existentes = getStoredInfluenciadores();
+    const duplicado = existentes.find(
+      (i) => i.id !== influenciador.id && i.slugBase.toLowerCase().trim() === editSlugBase.toLowerCase().trim()
+    );
+    if (duplicado) {
+      toast.error(`O slug "${editSlugBase}" já pertence ao influenciador "${duplicado.nomeExibicao || duplicado.nome}".`);
+      return;
+    }
+
+    const updated: Influenciador = {
       ...influenciador,
-      nome: editNome.trim(),
-      slugBio: editSlugBio.trim(),
-      slugPrincipal: editSlugPrincipal.trim(),
-      urlBase: editUrlBase.trim(),
-      utmSourcePadrao: editUtmSource.trim(),
-    });
+      slugBase: editSlugBase.trim().toLowerCase(),
+      nomeExibicao: editNomeExibicao.trim(),
+      nome: editNomeExibicao.trim(),
+      sufixoVendas: editSufixoVendas,
+      slugVendasCustomizado: editSufixoVendas === "customizado" ? editSlugVendasCustomizado.trim().toLowerCase() : undefined,
+      ehContaInterna: editEhContaInterna,
+      urlBase: editUrlBase.trim() || "hashirasensix.com.br",
+      utmSourcePadrao: editUtmSource.trim() || "beacons",
+    };
+
+    await handleSave(updated);
   };
 
   const handleUploadFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -201,40 +239,10 @@ export default function InfluenciadorDetailPage() {
 
   const handleDeleteInfluenciador = async () => {
     if (!influenciador) return;
-    if (!confirm(`Deseja remover "${influenciador.nome}" permanentemente?`)) return;
+    if (!confirm(`Deseja remover "${influenciador.nomeExibicao || influenciador.nome}" permanentemente?`)) return;
     await deleteInfluenciadorFromSupabase(influenciador.id);
     toast.success("Influenciador removido.");
     router.push("/admin/influenciadores");
-  };
-
-  const handleAddCheckout = async () => {
-    if (!influenciador) return;
-    if (!novoCheckoutNome.trim() || !novoCheckoutUrl.trim()) {
-      toast.error("Preencha o nome e a URL do link");
-      return;
-    }
-    const updated = addLinkCheckout(influenciador, {
-      nome: novoCheckoutNome.trim(),
-      url: novoCheckoutUrl.trim(),
-      ativo: true,
-    });
-    await handleSave(updated);
-    setNovoCheckoutNome("");
-    setNovoCheckoutUrl("");
-    setShowAddCheckout(false);
-  };
-
-  const handleUpdateCheckout = async (linkId: string, updates: Partial<Omit<LinkCheckout, "id">>) => {
-    if (!influenciador) return;
-    const updated = updateLinkCheckout(influenciador, linkId, updates);
-    await handleSave(updated);
-  };
-
-  const handleRemoveCheckout = async (linkId: string) => {
-    if (!influenciador) return;
-    const updated = removeLinkCheckout(influenciador, linkId);
-    await handleSave(updated);
-    toast.success("Link removido.");
   };
 
   if (loading && !influenciador) {
@@ -254,6 +262,20 @@ export default function InfluenciadorDetailPage() {
   const publicUrl = typeof window !== "undefined"
     ? `${window.location.origin}/influenciador/${influenciador.tokenAcessoRapido}`
     : `/influenciador/${influenciador.tokenAcessoRapido}`;
+
+  const slugBioAtual = getSlugBioHashira(influenciador);
+  const slugVendasAtual = getSlugHashirasensix(influenciador);
+  const urlVendasAtual = getUrlHashirasensix(influenciador);
+
+  // Preview dinâmico para a aba de configurações
+  const previewInfConfig: Influenciador = {
+    ...influenciador,
+    slugBase: editSlugBase || "slug",
+    sufixoVendas: editSufixoVendas,
+    slugVendasCustomizado: editSlugVendasCustomizado || editSlugBase,
+    urlBase: editUrlBase || "hashirasensix.com.br",
+    urlArvore: "biohashira.com.br",
+  };
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: "var(--background)" }}>
@@ -276,7 +298,7 @@ export default function InfluenciadorDetailPage() {
 
           {/* Header do influenciador */}
           <div
-            className="rounded-3xl p-6 flex items-center gap-5"
+            className="rounded-3xl p-6 flex items-center gap-5 flex-wrap sm:flex-nowrap"
             style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}
           >
             {/* Foto */}
@@ -284,27 +306,29 @@ export default function InfluenciadorDetailPage() {
               {influenciador.fotoUrl ? (
                 <img
                   src={influenciador.fotoUrl}
-                  alt={influenciador.nome}
+                  alt={influenciador.nomeExibicao || influenciador.nome}
                   className="w-20 h-20 rounded-2xl object-cover ring-2 ring-[#5B50E5]/20"
                 />
               ) : (
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#5B50E5] to-[#7C3AED] flex items-center justify-center text-white font-extrabold text-3xl">
-                  {influenciador.nome.charAt(0).toUpperCase()}
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#5B50E5] to-[#7C3AED] flex items-center justify-center text-white font-extrabold text-3xl shadow-lg shadow-[#5B50E5]/20">
+                  {(influenciador.nomeExibicao || influenciador.nome || "I").charAt(0).toUpperCase()}
                 </div>
               )}
             </div>
 
             <div className="flex-1 min-w-0">
-              <h1
-                className="text-xl font-extrabold font-['Plus_Jakarta_Sans'] truncate"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {influenciador.nome}
-              </h1>
-              <div className="flex items-center gap-3 mt-1 flex-wrap">
-                <span className="text-sm font-mono" style={{ color: "var(--text-muted)" }}>
-                  /{influenciador.slugBio}
-                </span>
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <h1
+                  className="text-xl font-extrabold font-['Plus_Jakarta_Sans'] truncate"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {influenciador.nomeExibicao || influenciador.nome}
+                </h1>
+                {influenciador.ehContaInterna && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-lg font-bold bg-[#5B50E5]/15 text-[#5B50E5] border border-[#5B50E5]/30">
+                    Conta Interna
+                  </span>
+                )}
                 <span
                   className="text-[10px] px-2 py-0.5 rounded-lg font-bold"
                   style={{
@@ -315,8 +339,16 @@ export default function InfluenciadorDetailPage() {
                   {influenciador.ativo ? "Ativo" : "Inativo"}
                 </span>
               </div>
+
+              {/* Slugs resolvidos */}
+              <div className="flex items-center gap-3 text-xs font-mono flex-wrap" style={{ color: "var(--text-muted)" }}>
+                <span>bio: <strong className="text-[#A78BFA]">/{slugBioAtual}</strong></span>
+                <span>•</span>
+                <span>vendas: <strong className="text-amber-400">/{slugVendasAtual}</strong></span>
+              </div>
+
               <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-                {influenciador.linksCheckout.length} link{influenciador.linksCheckout.length !== 1 ? "s" : ""} de checkout · utm_source: {influenciador.utmSourcePadrao}
+                {influenciador.linksCheckout.length} link{influenciador.linksCheckout.length !== 1 ? "s" : ""} de checkout · utm_source: {influenciador.utmSourcePadrao || "beacons"}
               </p>
             </div>
 
@@ -351,6 +383,11 @@ export default function InfluenciadorDetailPage() {
                 >
                   <Icon className="w-3.5 h-3.5" />
                   {tab.label}
+                  {tab.id === "arvore" && influenciador.ehContaInterna && (
+                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-black/20 text-white/60">
+                      N/A
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -368,10 +405,9 @@ export default function InfluenciadorDetailPage() {
               {/* ── ABA UTM ── */}
               {activeTab === "utm" && (
                 <div className="space-y-5">
-                  {/* Cabeçalho da aba UTM com Copiar Todos os UTMs */}
                   <div className="flex items-center justify-between flex-wrap gap-3 pb-1">
                     <p className="text-xs font-bold uppercase tracking-wider text-[#5B50E5]">
-                      Links com UTM por Plataforma
+                      Links com UTM por Plataforma (Site de Vendas)
                     </p>
                     <CopyButton
                       text=""
@@ -386,24 +422,24 @@ export default function InfluenciadorDetailPage() {
                     style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}
                   >
                     <p className="text-[10px] font-bold uppercase tracking-wider mb-3" style={{ color: "var(--text-muted)" }}>
-                      URL Base do Site
+                      URL Base da Página de Vendas
                     </p>
                     <div className="flex items-center gap-3">
                       <div
-                        className="flex-1 flex items-center gap-2 px-4 py-2.5 rounded-xl font-mono text-sm"
+                        className="flex-1 flex items-center gap-2 px-4 py-2.5 rounded-xl font-mono text-sm overflow-hidden"
                         style={{ backgroundColor: "var(--surface-alt)", border: "1px solid var(--border)" }}
                       >
                         <Globe className="w-4 h-4 shrink-0" style={{ color: "var(--text-muted)" }} />
-                        <span style={{ color: "var(--text-secondary)" }}>
-                          {influenciador.urlBase}/
-                          <span className="text-[#5B50E5] font-bold">{influenciador.slugPrincipal}</span>
+                        <span className="truncate" style={{ color: "var(--text-secondary)" }}>
+                          {influenciador.urlBase || "hashirasensix.com.br"}/
+                          <span className="text-amber-400 font-bold">{slugVendasAtual}</span>
                         </span>
                       </div>
                       <CopyButton
-                        text={`https://${influenciador.urlBase}/${influenciador.slugPrincipal}`}
+                        text={urlVendasAtual}
                         formattedText={formatarLinkComAssinatura(
-                          `URL Base (${influenciador.nome})`,
-                          `https://${influenciador.urlBase}/${influenciador.slugPrincipal}`
+                          `URL de Vendas (${influenciador.nomeExibicao || influenciador.nome})`,
+                          urlVendasAtual
                         )}
                         label="Copiar"
                       />
@@ -429,7 +465,24 @@ export default function InfluenciadorDetailPage() {
 
               {/* ── ABA ÁRVORE ── */}
               {activeTab === "arvore" && (
-                <ArvoreLinks influenciador={influenciador} />
+                influenciador.ehContaInterna ? (
+                  <div
+                    className="rounded-3xl p-8 text-center space-y-3"
+                    style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}
+                  >
+                    <div className="w-14 h-14 mx-auto rounded-2xl bg-[#5B50E5]/15 flex items-center justify-center">
+                      <Building2 className="w-7 h-7 text-[#5B50E5]" />
+                    </div>
+                    <h3 className="text-base font-extrabold" style={{ color: "var(--text-primary)" }}>
+                      Conta Interna / Institucional
+                    </h3>
+                    <p className="text-xs max-w-md mx-auto" style={{ color: "var(--text-muted)" }}>
+                      Esta conta é configurada como canal institucional interno (ex: tráfego pago, página principal). Ela não possui uma árvore de bio-links no biohashira.com.br.
+                    </p>
+                  </div>
+                ) : (
+                  <ArvoreLinks influenciador={influenciador} />
+                )
               )}
 
               {/* ── ABA CONFIGURAÇÕES ── */}
@@ -448,12 +501,12 @@ export default function InfluenciadorDetailPage() {
                         {influenciador.fotoUrl ? (
                           <img
                             src={influenciador.fotoUrl}
-                            alt={influenciador.nome}
+                            alt={influenciador.nomeExibicao || influenciador.nome}
                             className="w-20 h-20 rounded-2xl object-cover"
                           />
                         ) : (
                           <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#5B50E5] to-[#7C3AED] flex items-center justify-center text-white font-extrabold text-3xl">
-                            {influenciador.nome.charAt(0).toUpperCase()}
+                            {(influenciador.nomeExibicao || influenciador.nome || "I").charAt(0).toUpperCase()}
                           </div>
                         )}
                       </div>
@@ -480,25 +533,118 @@ export default function InfluenciadorDetailPage() {
                     </div>
                   </div>
 
-                  {/* Edição de dados */}
+                  {/* Edição de dados estruturados */}
                   <div
                     className="rounded-2xl p-5"
                     style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}
                   >
                     <p className="text-sm font-bold mb-5" style={{ color: "var(--text-primary)" }}>
-                      Dados do Influenciador
+                      Identificador e Configurações de Slugs
                     </p>
                     <form onSubmit={handleSaveConfig} className="space-y-4">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Nome Base */}
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Nome</label>
+                          <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>
+                            Nome Base / Slug Canônico *
+                          </label>
                           <input
                             type="text"
-                            value={editNome}
-                            onChange={(e) => setEditNome(e.target.value)}
+                            value={editSlugBase}
+                            onChange={(e) => setEditSlugBase(normalizarSlug(e.target.value))}
+                            placeholder="ex: astorga"
+                            className="coursue-input text-sm py-2.5 w-full font-mono font-bold"
+                            required
+                          />
+                          <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                            biohashira.com.br/{editSlugBase || "slug"}
+                          </p>
+                        </div>
+
+                        {/* Nome de Exibição */}
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>
+                            Nome de Exibição *
+                          </label>
+                          <input
+                            type="text"
+                            value={editNomeExibicao}
+                            onChange={(e) => setEditNomeExibicao(e.target.value)}
+                            placeholder="ex: Astorga"
                             className="coursue-input text-sm py-2.5 w-full"
+                            required
                           />
                         </div>
+
+                        {/* Sufixo de Vendas */}
+                        <div className="space-y-1.5 sm:col-span-2">
+                          <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>
+                            Sufixo da Página de Vendas
+                          </label>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {SUFIXOS_VENDAS_OPCOES.map((opt) => {
+                              const isSelected = editSufixoVendas === opt.valor;
+                              return (
+                                <button
+                                  key={opt.valor}
+                                  type="button"
+                                  onClick={() => setEditSufixoVendas(opt.valor)}
+                                  className={`py-2 px-3 rounded-xl text-xs font-bold text-center border transition-all ${
+                                    isSelected
+                                      ? "bg-[#5B50E5] text-white border-[#5B50E5] shadow-md shadow-[#5B50E5]/20"
+                                      : "bg-white/5 text-gray-300 border-white/10 hover:border-white/25 hover:bg-white/10"
+                                  }`}
+                                >
+                                  {opt.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Campo extra se sufixo for customizado */}
+                        {editSufixoVendas === "customizado" && (
+                          <div className="space-y-1.5 sm:col-span-2 animate-in fade-in duration-150">
+                            <label className="text-xs font-bold text-amber-400">
+                              Slug Customizado para o Site de Vendas *
+                            </label>
+                            <input
+                              type="text"
+                              value={editSlugVendasCustomizado}
+                              onChange={(e) => setEditSlugVendasCustomizado(normalizarSlug(e.target.value))}
+                              placeholder="ex: hashira-principal"
+                              className="coursue-input text-sm py-2.5 w-full font-mono border-amber-500/40"
+                              required
+                            />
+                          </div>
+                        )}
+
+                        {/* Checkbox Conta Interna */}
+                        <div
+                          className="sm:col-span-2 flex items-center gap-3 p-3.5 rounded-2xl cursor-pointer transition-colors"
+                          style={{
+                            backgroundColor: editEhContaInterna ? "rgba(91,80,229,0.12)" : "var(--surface-alt)",
+                            border: editEhContaInterna ? "1px solid rgba(91,80,229,0.3)" : "1px solid var(--border)",
+                          }}
+                          onClick={() => setEditEhContaInterna(!editEhContaInterna)}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={editEhContaInterna}
+                            onChange={(e) => setEditEhContaInterna(e.target.checked)}
+                            className="w-4 h-4 rounded text-[#5B50E5] focus:ring-[#5B50E5] cursor-pointer"
+                          />
+                          <div className="flex-1 text-left">
+                            <p className="text-xs font-bold" style={{ color: "var(--text-primary)" }}>
+                              Conta interna (não é influenciador)
+                            </p>
+                            <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                              Oculta a árvore de links da bio. Útil para contas institucionais ou campanhas internas.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* URL Base & UTM Source */}
                         <div className="space-y-1.5">
                           <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>
                             URL Base do Site
@@ -511,29 +657,8 @@ export default function InfluenciadorDetailPage() {
                             className="coursue-input text-sm py-2.5 w-full font-mono"
                           />
                         </div>
+
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>
-                            Slug da Árvore (biohashira)
-                          </label>
-                          <input
-                            type="text"
-                            value={editSlugBio}
-                            onChange={(e) => setEditSlugBio(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                            className="coursue-input text-sm py-2.5 w-full font-mono"
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>
-                            Slug UTM (utm_content)
-                          </label>
-                          <input
-                            type="text"
-                            value={editSlugPrincipal}
-                            onChange={(e) => setEditSlugPrincipal(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                            className="coursue-input text-sm py-2.5 w-full font-mono"
-                          />
-                        </div>
-                        <div className="space-y-1.5 sm:col-span-2">
                           <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>
                             UTM Source Padrão
                           </label>
@@ -542,16 +667,55 @@ export default function InfluenciadorDetailPage() {
                             value={editUtmSource}
                             onChange={(e) => setEditUtmSource(e.target.value)}
                             placeholder="beacons"
-                            className="coursue-input text-sm py-2.5 w-full font-mono max-w-xs"
+                            className="coursue-input text-sm py-2.5 w-full font-mono"
                           />
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3 pt-2">
+                      {/* Pré-visualização Ao Vivo Lado a Lado */}
+                      <div
+                        className="rounded-2xl p-4 space-y-2.5 mt-2"
+                        style={{
+                          background: "linear-gradient(135deg, rgba(91,80,229,0.06) 0%, rgba(124,58,237,0.03) 100%)",
+                          border: "1px solid rgba(91,80,229,0.2)",
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#5B50E5] flex items-center gap-1">
+                            <Sparkles className="w-3 h-3" />
+                            Pré-visualização das URLs Resolvidas
+                          </span>
+                          <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" /> Derivado em tempo real
+                          </span>
+                        </div>
+
+                        <div className="space-y-2 text-xs font-mono">
+                          <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-black/20 border border-white/5">
+                            <span className="text-white/50 text-[11px] shrink-0 flex items-center gap-1.5">
+                              <Globe className="w-3 h-3 text-[#A78BFA]" /> Bio-links:
+                            </span>
+                            <span className="text-white font-bold truncate">
+                              biohashira.com.br/<span className="text-[#A78BFA]">{getSlugBioHashira(previewInfConfig)}</span>
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-black/20 border border-white/5">
+                            <span className="text-white/50 text-[11px] shrink-0 flex items-center gap-1.5">
+                              <ShoppingBag className="w-3 h-3 text-amber-400" /> Vendas:
+                            </span>
+                            <span className="text-white font-bold truncate">
+                              hashirasensix.com.br/<span className="text-amber-400">{getSlugHashirasensix(previewInfConfig)}</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 pt-3">
                         <button
                           type="submit"
                           disabled={saving}
-                          className="coursue-btn-primary py-2.5 px-5 text-sm flex items-center gap-2 disabled:opacity-50"
+                          className="coursue-btn-primary py-2.5 px-6 text-sm flex items-center gap-2 disabled:opacity-50"
                         >
                           <Save className="w-4 h-4" />
                           {saving ? "Salvando..." : "Salvar Alterações"}
@@ -575,7 +739,7 @@ export default function InfluenciadorDetailPage() {
                   >
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
-                        Link de Acesso Rápido
+                        Link de Acesso Rápido do Influenciador
                       </p>
                       <button
                         onClick={handleRegenerateToken}
@@ -590,7 +754,7 @@ export default function InfluenciadorDetailPage() {
                       </button>
                     </div>
                     <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                      Compartilhe este link com o influenciador para que ele acesse seus links sem precisar de login.
+                      Compartilhe este link com o parceiro para que ele visualize e copie seus links oficiais sem necessidade de login.
                     </p>
                     <div
                       className="flex items-center gap-3 px-4 py-3 rounded-xl"

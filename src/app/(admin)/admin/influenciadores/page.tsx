@@ -3,13 +3,15 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { UserRoundPlus, Search, Users, ChevronRight, ToggleLeft, ToggleRight, Trash2 } from "lucide-react";
+import { UserRoundPlus, Search, Users, ChevronRight, ToggleLeft, ToggleRight, Trash2, Building2 } from "lucide-react";
 import {
   Influenciador,
   fetchInfluenciadoresFromSupabase,
   getStoredInfluenciadores,
   saveInfluenciadorToSupabase,
   deleteInfluenciadorFromSupabase,
+  getSlugBioHashira,
+  getSlugHashirasensix,
 } from "@/lib/influenciadores";
 import { AppSidebar } from "@/components/AppSidebar";
 import { CreateInfluenciadorModal } from "@/components/influenciadores/CreateInfluenciadorModal";
@@ -64,7 +66,7 @@ export default function InfluenciadoresListPage() {
 
   const handleSaveNovo = async (inf: Influenciador) => {
     await saveInfluenciadorToSupabase(inf);
-    toast.success(`Influenciador "${inf.nome}" cadastrado com sucesso!`);
+    toast.success(`Influenciador "${inf.nomeExibicao || inf.nome}" cadastrado com sucesso!`);
     carregarDados();
   };
 
@@ -73,27 +75,36 @@ export default function InfluenciadoresListPage() {
     e.preventDefault();
     const novoStatus = !inf.ativo;
     await saveInfluenciadorToSupabase({ ...inf, ativo: novoStatus });
-    toast.success(`Influenciador "${inf.nome}" ${novoStatus ? "ativado" : "desativado"}.`);
+    toast.success(`Influenciador "${inf.nomeExibicao || inf.nome}" ${novoStatus ? "ativado" : "desativado"}.`);
     carregarDados();
   };
 
   const handleDelete = async (e: React.MouseEvent, inf: Influenciador) => {
     e.stopPropagation();
     e.preventDefault();
-    if (!confirm(`Tem certeza que deseja remover "${inf.nome}" permanentemente da grade?`)) {
+    const nome = inf.nomeExibicao || inf.nome;
+    if (!confirm(`Tem certeza que deseja remover "${nome}" permanentemente da grade?`)) {
       return;
     }
     await deleteInfluenciadorFromSupabase(inf.id);
-    toast.success(`Influenciador "${inf.nome}" removido da grade.`);
+    toast.success(`Influenciador "${nome}" removido da grade.`);
     carregarDados();
   };
 
   const filtrados = influenciadores.filter((inf) => {
-    const q = searchQuery.toLowerCase();
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+
+    const nome = (inf.nomeExibicao || inf.nome || "").toLowerCase();
+    const slugBase = (inf.slugBase || "").toLowerCase();
+    const slugBio = getSlugBioHashira(inf).toLowerCase();
+    const slugVendas = getSlugHashirasensix(inf).toLowerCase();
+
     return (
-      inf.nome.toLowerCase().includes(q) ||
-      inf.slugBio.toLowerCase().includes(q) ||
-      inf.slugPrincipal.toLowerCase().includes(q)
+      nome.includes(q) ||
+      slugBase.includes(q) ||
+      slugBio.includes(q) ||
+      slugVendas.includes(q)
     );
   });
 
@@ -180,108 +191,125 @@ export default function InfluenciadoresListPage() {
               className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
             >
               <AnimatePresence>
-                {filtrados.map((inf) => (
-                  <motion.div
-                    key={inf.id}
-                    layout
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <button
-                      onClick={() => router.push(`/admin/influenciadores/${inf.id}`)}
-                      className="w-full text-left rounded-3xl p-5 transition-all group hover:shadow-lg"
-                      style={{
-                        backgroundColor: "var(--surface)",
-                        border: "1px solid var(--border)",
-                        opacity: inf.ativo ? 1 : 0.65,
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = "#5B50E5";
-                        e.currentTarget.style.boxShadow = "0 4px 24px rgba(91,80,229,0.15)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = "var(--border)";
-                        e.currentTarget.style.boxShadow = "";
-                      }}
-                    >
-                      <div className="flex items-center gap-4">
-                        {/* Avatar */}
-                        <div className="shrink-0">
-                          {inf.fotoUrl ? (
-                            <img
-                              src={inf.fotoUrl}
-                              alt={inf.nome}
-                              className="w-14 h-14 rounded-2xl object-cover ring-1 ring-white/10"
-                            />
-                          ) : (
-                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#5B50E5] to-[#7C3AED] flex items-center justify-center text-white font-extrabold text-xl">
-                              {inf.nome.charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                        </div>
+                {filtrados.map((inf) => {
+                  const nome = inf.nomeExibicao || inf.nome || inf.slugBase;
+                  const slugBio = getSlugBioHashira(inf);
+                  const slugVendas = getSlugHashirasensix(inf);
 
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <p
-                              className="font-extrabold text-sm truncate"
-                              style={{ color: "var(--text-primary)" }}
-                            >
-                              {inf.nome}
-                            </p>
-                            {!inf.ativo && (
-                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-500 font-bold shrink-0">
-                                Inativo
-                              </span>
+                  return (
+                    <motion.div
+                      key={inf.id}
+                      layout
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <button
+                        onClick={() => router.push(`/admin/influenciadores/${inf.id}`)}
+                        className="w-full text-left rounded-3xl p-5 transition-all group hover:shadow-lg"
+                        style={{
+                          backgroundColor: "var(--surface)",
+                          border: "1px solid var(--border)",
+                          opacity: inf.ativo ? 1 : 0.65,
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = "#5B50E5";
+                          e.currentTarget.style.boxShadow = "0 4px 24px rgba(91,80,229,0.15)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = "var(--border)";
+                          e.currentTarget.style.boxShadow = "";
+                        }}
+                      >
+                        <div className="flex items-center gap-4">
+                          {/* Avatar */}
+                          <div className="shrink-0">
+                            {inf.fotoUrl ? (
+                              <img
+                                src={inf.fotoUrl}
+                                alt={nome}
+                                className="w-14 h-14 rounded-2xl object-cover ring-1 ring-white/10"
+                              />
+                            ) : (
+                              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#5B50E5] to-[#7C3AED] flex items-center justify-center text-white font-extrabold text-xl shadow-md shadow-[#5B50E5]/20">
+                                {nome.charAt(0).toUpperCase()}
+                              </div>
                             )}
                           </div>
-                          <p
-                            className="text-xs font-mono truncate"
-                            style={{ color: "var(--text-muted)" }}
-                          >
-                            /{inf.slugBio}
-                          </p>
-                          <p
-                            className="text-[11px] mt-1"
-                            style={{ color: "var(--text-muted)" }}
-                          >
-                            {inf.linksCheckout.length} link{inf.linksCheckout.length !== 1 ? "s" : ""} de checkout
-                          </p>
-                        </div>
 
-                        {/* Ações Rápidas */}
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            type="button"
-                            onClick={(e) => handleToggleAtivo(e, inf)}
-                            className="p-2 rounded-xl transition-colors text-gray-400 hover:text-amber-500 hover:bg-amber-500/10"
-                            title={inf.ativo ? "Desativar influenciador" : "Ativar influenciador"}
-                          >
-                            {inf.ativo ? (
-                              <ToggleRight className="w-5 h-5 text-emerald-500" />
-                            ) : (
-                              <ToggleLeft className="w-5 h-5 text-gray-400" />
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => handleDelete(e, inf)}
-                            className="p-2 rounded-xl text-gray-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
-                            title={`Remover ${inf.nome}`}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                          <ChevronRight
-                            className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5"
-                            style={{ color: "var(--text-muted)" }}
-                          />
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                              <p
+                                className="font-extrabold text-sm truncate"
+                                style={{ color: "var(--text-primary)" }}
+                              >
+                                {nome}
+                              </p>
+                              {inf.ehContaInterna && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#5B50E5]/15 text-[#5B50E5] font-bold shrink-0 border border-[#5B50E5]/20">
+                                  Interna
+                                </span>
+                              )}
+                              {!inf.ativo && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-500 font-bold shrink-0">
+                                  Inativo
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Slugs resolvidos */}
+                            <div className="text-[11px] font-mono truncate space-y-0.5" style={{ color: "var(--text-muted)" }}>
+                              <p className="truncate">
+                                bio: <span className="text-[#A78BFA]">/{slugBio}</span>
+                              </p>
+                              <p className="truncate">
+                                vendas: <span className="text-amber-400">/{slugVendas}</span>
+                              </p>
+                            </div>
+
+                            <p
+                              className="text-[11px] mt-1 font-medium"
+                              style={{ color: "var(--text-muted)" }}
+                            >
+                              {inf.linksCheckout.length} link{inf.linksCheckout.length !== 1 ? "s" : ""} de checkout
+                            </p>
+                          </div>
+
+                          {/* Ações Rápidas */}
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => handleToggleAtivo(e, inf)}
+                              className="p-2 rounded-xl transition-colors text-gray-400 hover:text-amber-500 hover:bg-amber-500/10"
+                              title={inf.ativo ? "Desativar influenciador" : "Ativar influenciador"}
+                            >
+                              {inf.ativo ? (
+                                <ToggleRight className="w-5 h-5 text-emerald-500" />
+                              ) : (
+                                <ToggleLeft className="w-5 h-5 text-gray-400" />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => handleDelete(e, inf)}
+                              className="p-2 rounded-xl text-gray-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
+                              title={`Remover ${nome}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            <ChevronRight
+                              className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5"
+                              style={{ color: "var(--text-muted)" }}
+                            >
+                            </ChevronRight>
+                          </div>
                         </div>
-                      </div>
-                    </button>
-                  </motion.div>
-                ))}
+                      </button>
+                    </motion.div>
+                  );
+                })}
               </AnimatePresence>
             </motion.div>
           )}

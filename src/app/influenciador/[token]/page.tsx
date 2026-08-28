@@ -7,6 +7,8 @@ import {
   generateUTMLinks,
   generateArvoreLinks,
   getArvoreRaiz,
+  getSlugBioHashira,
+  getSlugHashirasensix,
   Influenciador,
   formatarPacoteCompletoInfluenciador,
   CATEGORIAS_CHECKOUT_PREDEFINIDAS,
@@ -102,6 +104,8 @@ export default function InfluenciadorPublicPage() {
     );
   }
 
+  const nome = influenciador.nomeExibicao || influenciador.nome || influenciador.slugBase;
+  const slugBio = getSlugBioHashira(influenciador);
   const utmLinks = generateUTMLinks(influenciador);
   const arvoreLinks = generateArvoreLinks(influenciador);
   const raizBio = getArvoreRaiz(influenciador);
@@ -162,12 +166,12 @@ export default function InfluenciadorPublicPage() {
                   {influenciador.fotoUrl ? (
                     <img
                       src={influenciador.fotoUrl}
-                      alt={influenciador.nome}
+                      alt={nome}
                       className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl object-cover ring-4 ring-[#5B50E5]/40 shadow-2xl shadow-[#5B50E5]/30"
                     />
                   ) : (
                     <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-gradient-to-br from-[#5B50E5] to-[#7C3AED] flex items-center justify-center text-5xl font-extrabold shadow-2xl shadow-[#5B50E5]/30">
-                      {influenciador.nome.charAt(0).toUpperCase()}
+                      {nome.charAt(0).toUpperCase()}
                     </div>
                   )}
                   <div className="absolute -bottom-1 -right-1 bg-emerald-500 w-8 h-8 rounded-full border-4 border-[#0F0E1A] flex items-center justify-center" title="Links Validados Ativos">

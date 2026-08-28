@@ -5,6 +5,8 @@ import { notifyRealtimeChange } from "@/lib/realtimeSync";
 // TIPOS
 // ─────────────────────────────────────────────
 
+export type SufixoVendas = "-new" | "-vendas" | "" | "customizado";
+
 export interface LinkCheckout {
   id: string;
   categoriaId?: string; // ex: "vip", "pack_completo", "sensi_permanente"
@@ -57,18 +59,29 @@ export const CATEGORIAS_CHECKOUT_PREDEFINIDAS: CategoriaCheckoutConfig[] = [
 
 export interface Influenciador {
   id: string;
-  nome: string;
-  slugBio: string;          // slug usado na árvore biohashira.com.br/{slugBio}
-  slugPrincipal: string;    // slug para utm_content
-  fotoUrl: string;
-  urlBase: string;          // domínio base do site de vendas (ex: "hashirasensix.com.br")
-  urlArvore: string;        // domínio da árvore de links (padrão: "biohashira.com.br")
-  utmSourcePadrao: string;  // padrão: "beacons"
-  linksCheckout: LinkCheckout[];
-  tokenAcessoRapido: string;
+  slugBase: string;                    // nome único canônico, ex: "astorga" — SEMPRE minúsculo, sem espaço/acento
+  nomeExibicao: string;                // nome pra exibição, ex: "Astorga"
+  nome?: string;                       // alias para compatibilidade reversa
+  sufixoVendas: SufixoVendas;          // default: "-new"
+  slugVendasCustomizado?: string;      // só preenchido quando sufixoVendas === "customizado"
+  ehContaInterna?: boolean;            // true para contas como "hashira-principal" (não são influenciadores de verdade)
   ativo: boolean;
+  linksCheckout: LinkCheckout[];
+  checkoutLinks?: LinkCheckout[];      // alias para compatibilidade
+  bioLinks?: any[];
+  fotoUrl: string;
+  avatarUrl?: string;                  // alias compatível com padrão UserAccount
+  urlBase: string;                     // domínio base do site de vendas (padrão: "hashirasensix.com.br")
+  urlArvore: string;                   // domínio da árvore de links (padrão: "biohashira.com.br")
+  utmSourcePadrao: string;             // padrão: "beacons"
+  tokenAcessoRapido: string;
   criadoPor: string;
   criadoEm: string;
+  atualizadoEm?: string;
+
+  // Campos legados mapeados dinamicamente para compatibilidade
+  slugBio?: string;
+  slugPrincipal?: string;
 }
 
 export interface UTMLinkBlock {
@@ -100,18 +113,105 @@ const PLATAFORMAS = [
   { id: "tiktok"   as const, label: "TikTok",    icone: "Music2",    sufixo: "ttk", utm_medium: "tiktok" },
 ];
 
+export const SUFIXOS_VENDAS_OPCOES: { valor: SufixoVendas; label: string; descricao: string }[] = [
+  { valor: "-new", label: "-new (Padrão)", descricao: "hashirasensix.com.br/{slug}-new" },
+  { valor: "-vendas", label: "-vendas", descricao: "hashirasensix.com.br/{slug}-vendas" },
+  { valor: "", label: "Sem sufixo", descricao: "hashirasensix.com.br/{slug}" },
+  { valor: "customizado", label: "Personalizado...", descricao: "Definir slug de vendas manualmente" },
+];
+
 // ─────────────────────────────────────────────
-// HELPERS DE GERAÇÃO
+// FUNÇÕES PURAS DERIVADAS (FONTE ÚNICA DA VERDADE)
 // ─────────────────────────────────────────────
 
-/** Gera um slug a partir do nome (minúsculo, sem espaços, sem acentos) */
-export function gerarSlug(nome: string): string {
-  return nome
+/** Retorna o slug do biohashira (sempre igual a slugBase) */
+export function getSlugBioHashira(inf: Influenciador): string {
+  return (inf.slugBase || inf.slugBio || inf.nome || "").trim().toLowerCase();
+}
+
+/** Retorna o slug do hashirasensix resolvido */
+export function getSlugHashirasensix(inf: Influenciador): string {
+  if (inf.sufixoVendas === "customizado") {
+    return (inf.slugVendasCustomizado?.trim() || inf.slugBase || inf.slugPrincipal || "").toLowerCase();
+  }
+  const base = getSlugBioHashira(inf);
+  const sufixo = inf.sufixoVendas !== undefined ? inf.sufixoVendas : "-new";
+  return `${base}${sufixo}`;
+}
+
+/** URL completa da página de biohashira */
+export function getUrlBioHashira(inf: Influenciador): string {
+  const arvore = (inf.urlArvore || "biohashira.com.br").replace(/\/$/, "");
+  return `https://${arvore}/${getSlugBioHashira(inf)}`;
+}
+
+/** URL completa da página de vendas hashirasensix */
+export function getUrlHashirasensix(inf: Influenciador): string {
+  const base = (inf.urlBase || "hashirasensix.com.br").replace(/\/$/, "");
+  return `https://${base}/${getSlugHashirasensix(inf)}`;
+}
+
+// ─────────────────────────────────────────────
+// HELPERS DE NORMALIZAÇÃO E VALIDAÇÃO
+// ─────────────────────────────────────────────
+
+/** Normaliza texto para o padrão slugBase (minúsculo, sem acento, sem espaço, apenas a-z, 0-9 e hífen) */
+export function normalizarSlug(texto: string): string {
+  return texto
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/[^a-z0-9-]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+/** Alias para compatibilidade */
+export const gerarSlug = normalizarSlug;
+
+/** Capitaliza um slug para sugerir o Nome de Exibição (ex: "joao-silva" -> "Joao Silva") */
+export function capitalizarSlugParaNome(slug: string): string {
+  if (!slug) return "";
+  return slug
+    .split("-")
+    .map((parte) => (parte ? parte.charAt(0).toUpperCase() + parte.slice(1) : ""))
+    .join(" ")
+    .trim();
+}
+
+/** Valida o slugBase segundo as regras estritas */
+export function validarSlugBase(slug: string): { valido: boolean; erro?: string; sugestao?: string } {
+  const limpo = slug.trim();
+  if (!limpo) {
+    return { valido: false, erro: "O slug base é obrigatório." };
+  }
+  const regex = /^[a-z0-9-]+$/;
+  if (!regex.test(limpo)) {
+    const sugerido = normalizarSlug(limpo);
+    return {
+      valido: false,
+      erro: "O slug base só pode conter letras minúsculas sem acento, números e hífens.",
+      sugestao: sugerido || undefined,
+    };
+  }
+  return { valido: true };
+}
+
+/** Gera um slug único garantido a partir do nome (ex: "João Hashira" -> "joao-hashira", ou "joao-hashira-2" se já existir) */
+export function gerarSlugUnico(nome: string, existentes: Influenciador[] = []): string {
+  const base = normalizarSlug(nome) || "influenciador";
+  const slugsExistentes = new Set(
+    existentes.map((i) => (i.slugBase || i.slugBio || "").toLowerCase().trim())
+  );
+
+  if (!slugsExistentes.has(base)) {
+    return base;
+  }
+
+  let counter = 2;
+  while (slugsExistentes.has(`${base}-${counter}`)) {
+    counter++;
+  }
+  return `${base}-${counter}`;
 }
 
 /** Gera um token UUID v4 simples */
@@ -125,22 +225,23 @@ export function generateTokenAcessoRapido(): string {
 
 /** Gera os blocos de UTM para as 3 plataformas */
 export function generateUTMLinks(inf: Influenciador): UTMLinkBlock[] {
+  const slugVendas = getSlugHashirasensix(inf);
+  const base = (inf.urlBase || "hashirasensix.com.br").replace(/\/$/, "");
+
   return PLATAFORMAS.map((p) => {
     const params = new URLSearchParams({
       utm_source: inf.utmSourcePadrao || "beacons",
       utm_medium: p.utm_medium,
-      utm_content: inf.slugPrincipal,
+      utm_content: slugVendas,
     });
-    const base = inf.urlBase.replace(/\/$/, "");
-    const slug = inf.slugPrincipal;
     return {
       plataforma: p.id,
       label: p.label,
       icone: p.icone,
       utmSource: inf.utmSourcePadrao || "beacons",
       utmMedium: p.utm_medium,
-      utmContent: inf.slugPrincipal,
-      urlCompleta: `https://${base}/${slug}?${params.toString()}`,
+      utmContent: slugVendas,
+      urlCompleta: `https://${base}/${slugVendas}?${params.toString()}`,
     };
   });
 }
@@ -148,19 +249,18 @@ export function generateUTMLinks(inf: Influenciador): UTMLinkBlock[] {
 /** Gera a árvore de links biohashira */
 export function generateArvoreLinks(inf: Influenciador): ArvoreLink[] {
   const arvore = (inf.urlArvore || "biohashira.com.br").replace(/\/$/, "");
-  const slug = inf.slugBio;
+  const slugBio = getSlugBioHashira(inf);
   return PLATAFORMAS.map((p) => ({
     plataforma: p.id,
     label: p.label,
     sufixo: p.sufixo,
-    urlCompleta: `https://${arvore}/${slug}/${p.sufixo}`,
+    urlCompleta: `https://${arvore}/${slugBio}/${p.sufixo}`,
   }));
 }
 
 /** URL raiz da árvore */
 export function getArvoreRaiz(inf: Influenciador): string {
-  const arvore = (inf.urlArvore || "biohashira.com.br").replace(/\/$/, "");
-  return `https://${arvore}/${inf.slugBio}`;
+  return getUrlBioHashira(inf);
 }
 
 // ─────────────────────────────────────────────
@@ -180,9 +280,13 @@ export function formatarLinkComAssinatura(titulo: string, url: string, infoAdici
 /** Formata todos os links com UTM do influenciador em um único bloco */
 export function formatarTodosLinksUTM(inf: Influenciador): string {
   const utms = generateUTMLinks(inf);
+  const nome = inf.nomeExibicao || inf.nome || inf.slugBase;
+  const slugBio = getSlugBioHashira(inf);
+  const urlVendas = getUrlHashirasensix(inf);
+
   let text = `🏯 CENTRAL HASHIRA — Links UTM de Divulgação\n`;
-  text += `👤 Influenciador: ${inf.nome} (@${inf.slugBio})\n`;
-  text += `🌐 URL Base: https://${inf.urlBase.replace(/\/$/, "")}/${inf.slugPrincipal}\n\n`;
+  text += `👤 Influenciador: ${nome} (@${slugBio})\n`;
+  text += `🌐 URL Base: ${urlVendas}\n\n`;
   text += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
   utms.forEach((u) => {
     text += `📌 ${u.label.toUpperCase()}:\n🔗 ${u.urlCompleta}\n\n`;
@@ -195,8 +299,10 @@ export function formatarTodosLinksUTM(inf: Influenciador): string {
 export function formatarTodaArvoreLinks(inf: Influenciador): string {
   const raiz = getArvoreRaiz(inf);
   const subrotas = generateArvoreLinks(inf);
+  const nome = inf.nomeExibicao || inf.nome || inf.slugBase;
+
   let text = `🏯 CENTRAL HASHIRA — Árvore de Links\n`;
-  text += `👤 Influenciador: ${inf.nome}\n`;
+  text += `👤 Influenciador: ${nome}\n`;
   text += `🌳 Link Raiz: ${raiz}\n\n`;
   text += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
   text += `📌 SUB-ROTAS POR PLATAFORMA:\n\n`;
@@ -209,8 +315,9 @@ export function formatarTodaArvoreLinks(inf: Influenciador): string {
 
 /** Formata todos os links de checkout por categoria em um único bloco */
 export function formatarTodosLinksCheckout(inf: Influenciador): string {
+  const nome = inf.nomeExibicao || inf.nome || inf.slugBase;
   let text = `🏯 CENTRAL HASHIRA — Links de Checkout\n`;
-  text += `👤 Influenciador: ${inf.nome}\n\n`;
+  text += `👤 Influenciador: ${nome}\n\n`;
   text += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
 
   CATEGORIAS_CHECKOUT_PREDEFINIDAS.forEach((cat) => {
@@ -239,9 +346,10 @@ export function formatarPacoteCompletoInfluenciador(inf: Influenciador): string 
   const utms = generateUTMLinks(inf);
   const raiz = getArvoreRaiz(inf);
   const subrotas = generateArvoreLinks(inf);
+  const nome = inf.nomeExibicao || inf.nome || inf.slugBase;
 
   let text = `🏯 CENTRAL HASHIRA — PACOTE COMPLETO DE LINKS\n`;
-  text += `👤 Influenciador: ${inf.nome}\n`;
+  text += `👤 Influenciador: ${nome}\n`;
   text += `📅 Data de emissão: ${new Date().toLocaleDateString("pt-BR")}\n\n`;
 
   text += `====================================\n`;
@@ -270,13 +378,15 @@ export function formatarPacoteCompletoInfluenciador(inf: Influenciador): string 
     });
   });
 
-  text += `\n====================================\n`;
-  text += `🌳 3. ÁRVORE DE LINKS (biohashira)\n`;
-  text += `====================================\n`;
-  text += `• Raiz Principal: ${raiz}\n`;
-  subrotas.forEach((s) => {
-    text += `• ${s.label}: ${s.urlCompleta}\n`;
-  });
+  if (!inf.ehContaInterna) {
+    text += `\n====================================\n`;
+    text += `🌳 3. ÁRVORE DE LINKS (biohashira)\n`;
+    text += `====================================\n`;
+    text += `• Raiz Principal: ${raiz}\n`;
+    subrotas.forEach((s) => {
+      text += `• ${s.label}: ${s.urlCompleta}\n`;
+    });
+  }
 
   text += `\n====================================\n`;
   text += `${HASHIRA_SIGNATURE_FOOTER}`;
@@ -285,16 +395,105 @@ export function formatarPacoteCompletoInfluenciador(inf: Influenciador): string 
 }
 
 // ─────────────────────────────────────────────
-// MAPEAMENTOS
+// MAPEAMENTOS & INFERÊNCIA INTELIGENTE
 // ─────────────────────────────────────────────
 
-export function mapSupabaseRowToInfluenciador(row: any): Influenciador {
+/** Infere os novos campos estruturados a partir de um registro antigo/legado */
+export function inferirCamposInfluenciador(row: any): {
+  slugBase: string;
+  sufixoVendas: SufixoVendas;
+  slugVendasCustomizado?: string;
+  ehContaInterna: boolean;
+  nomeExibicao: string;
+} {
+  // Se já tiver slug_base explícito salvo
+  if (row.slug_base) {
+    return {
+      slugBase: row.slug_base,
+      sufixoVendas: (row.sufixo_vendas as SufixoVendas) || "-new",
+      slugVendasCustomizado: row.slug_vendas_customizado || undefined,
+      ehContaInterna: Boolean(row.eh_conta_interna),
+      nomeExibicao: row.nome_exibicao || row.nome || capitalizarSlugParaNome(row.slug_base),
+    };
+  }
+
+  // Tabela oficial de casos especiais conhecidos
+  const rawIdentificador = (row.slug_principal || row.slug_bio || row.nomeIdentificador || "").trim().toLowerCase();
+
+  if (rawIdentificador === "hashira-principal" || rawIdentificador === "hashira-trafego-pago") {
+    return {
+      slugBase: rawIdentificador,
+      sufixoVendas: "customizado",
+      slugVendasCustomizado: rawIdentificador,
+      ehContaInterna: true,
+      nomeExibicao: row.nome || (rawIdentificador === "hashira-principal" ? "Hashira Principal" : "Hashira Tráfego Pago"),
+    };
+  }
+
+  if (rawIdentificador === "drey-new2" || rawIdentificador === "drey-new") {
+    return {
+      slugBase: "drey",
+      sufixoVendas: "-new",
+      ehContaInterna: false,
+      nomeExibicao: row.nome || "Drey",
+    };
+  }
+
+  // Normalização de segurança: se vier -new2 legado, corrige automaticamente para -new
+  if (rawIdentificador.endsWith("-new2")) {
+    const base = rawIdentificador.replace(/-new2$/, "");
+    return {
+      slugBase: base,
+      sufixoVendas: "-new",
+      ehContaInterna: false,
+      nomeExibicao: row.nome || capitalizarSlugParaNome(base),
+    };
+  }
+
+  if (rawIdentificador.endsWith("-vendas")) {
+    const base = rawIdentificador.replace(/-vendas$/, "");
+    return {
+      slugBase: base,
+      sufixoVendas: "-vendas",
+      ehContaInterna: false,
+      nomeExibicao: row.nome || capitalizarSlugParaNome(base),
+    };
+  }
+
+  if (rawIdentificador.endsWith("-new")) {
+    const base = rawIdentificador.replace(/-new$/, "");
+    return {
+      slugBase: base,
+      sufixoVendas: "-new",
+      ehContaInterna: false,
+      nomeExibicao: row.nome || capitalizarSlugParaNome(base),
+    };
+  }
+
+  // Fallback geral (se não tiver sufixo)
+  const base = normalizarSlug(rawIdentificador || row.nome || "influenciador");
   return {
+    slugBase: base,
+    sufixoVendas: "",
+    ehContaInterna: false,
+    nomeExibicao: row.nome || capitalizarSlugParaNome(base),
+  };
+}
+
+export function mapSupabaseRowToInfluenciador(row: any): Influenciador {
+  const inferido = inferirCamposInfluenciador(row);
+  const foto = row.foto_url || row.fotoUrl || row.avatar_url || row.avatarUrl || "";
+
+  const inf: Influenciador = {
     id: String(row.id),
-    nome: row.nome || "",
-    slugBio: row.slug_bio || row.slugBio || "",
-    slugPrincipal: row.slug_principal || row.slugPrincipal || "",
-    fotoUrl: row.foto_url || row.fotoUrl || "",
+    slugBase: inferido.slugBase,
+    nomeExibicao: inferido.nomeExibicao,
+    nome: inferido.nomeExibicao,
+    sufixoVendas: inferido.sufixoVendas,
+    slugVendasCustomizado: inferido.slugVendasCustomizado,
+    ehContaInterna: inferido.ehContaInterna,
+    fotoUrl: foto,
+    avatarUrl: foto,
     urlBase: row.url_base || row.urlBase || "hashirasensix.com.br",
     urlArvore: row.url_arvore || row.urlArvore || "biohashira.com.br",
     utmSourcePadrao: row.utm_source_padrao || row.utmSourcePadrao || "beacons",
@@ -303,24 +502,47 @@ export function mapSupabaseRowToInfluenciador(row: any): Influenciador {
     ativo: row.ativo ?? true,
     criadoPor: row.criado_por || row.criadoPor || "",
     criadoEm: row.created_at || row.criado_em || new Date().toISOString(),
+    atualizadoEm: row.updated_at || row.atualizadoEm,
+    bioLinks: row.bio_links,
   };
+
+  // Preenche dinamicamente os getters de compatibilidade
+  inf.slugBio = getSlugBioHashira(inf);
+  inf.slugPrincipal = getSlugHashirasensix(inf);
+  inf.checkoutLinks = inf.linksCheckout;
+
+  return inf;
 }
 
 export function mapInfluenciadorToSupabaseRow(inf: Influenciador) {
-  return {
+  const slugBio = getSlugBioHashira(inf);
+  const slugVendas = getSlugHashirasensix(inf);
+  const nome = inf.nomeExibicao || inf.nome || slugBio;
+  const foto = inf.fotoUrl || inf.avatarUrl || "";
+
+  const row: Record<string, any> = {
     id: inf.id,
-    nome: inf.nome,
-    slug_bio: inf.slugBio,
-    slug_principal: inf.slugPrincipal,
-    foto_url: inf.fotoUrl,
-    url_base: inf.urlBase,
-    url_arvore: inf.urlArvore,
-    utm_source_padrao: inf.utmSourcePadrao,
-    links_checkout: inf.linksCheckout,
+    nome: nome,
+    slug_bio: slugBio,
+    slug_principal: slugVendas,
+    foto_url: foto,
+    url_base: inf.urlBase || "hashirasensix.com.br",
+    url_arvore: inf.urlArvore || "biohashira.com.br",
+    utm_source_padrao: inf.utmSourcePadrao || "beacons",
+    links_checkout: inf.linksCheckout || [],
     token_acesso_rapido: inf.tokenAcessoRapido,
-    ativo: inf.ativo,
+    ativo: inf.ativo ?? true,
     criado_por: inf.criadoPor,
   };
+
+  // Novos campos estruturados
+  row.slug_base = inf.slugBase;
+  row.sufixo_vendas = inf.sufixoVendas;
+  row.slug_vendas_customizado = inf.slugVendasCustomizado || null;
+  row.eh_conta_interna = Boolean(inf.ehContaInterna);
+  row.nome_exibicao = nome;
+
+  return row;
 }
 
 // ─────────────────────────────────────────────
@@ -374,11 +596,30 @@ export async function fetchInfluenciadorByToken(token: string): Promise<Influenc
 export async function saveInfluenciadorToSupabase(inf: Influenciador): Promise<boolean> {
   try {
     const row = mapInfluenciadorToSupabaseRow(inf);
-    const { error } = await supabase
+    
+    // Tenta salvar com todos os campos (incluindo novos)
+    let { error } = await supabase
       .from("influenciadores")
       .upsert(row, { onConflict: "id" });
 
-    if (error) {
+    // Se o banco ainda não tiver as novas colunas DDL criadas, salva com os campos base para não travar a aplicação
+    if (error && error.message?.includes("column")) {
+      console.warn("[CDI WARN] Coluna nova ausente no Supabase, salvando em modo compatibilidade:", error.message);
+      const rowLegado = { ...row };
+      delete rowLegado.slug_base;
+      delete rowLegado.sufixo_vendas;
+      delete rowLegado.slug_vendas_customizado;
+      delete rowLegado.eh_conta_interna;
+      delete rowLegado.nome_exibicao;
+
+      const { error: errLegado } = await supabase
+        .from("influenciadores")
+        .upsert(rowLegado, { onConflict: "id" });
+      
+      if (errLegado) {
+        console.error("[CDI ERROR] Falha no fallback legado:", errLegado.message);
+      }
+    } else if (error) {
       console.error("[CDI ERROR] Falha ao salvar influenciador:", error.message);
     }
   } catch (e) {
@@ -429,7 +670,12 @@ export function getStoredInfluenciadores(): Influenciador[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as Influenciador[];
+    if (raw) {
+      const list = JSON.parse(raw);
+      if (Array.isArray(list)) {
+        return list.map(mapSupabaseRowToInfluenciador);
+      }
+    }
   } catch (e) {
     console.error("[CDI] Erro ao ler influenciadores do cache:", e);
   }
