@@ -159,11 +159,25 @@ export const TorresDiscordStatus: React.FC<TorresDiscordStatusProps> = ({ curren
               <div className="flex items-center justify-between gap-3 mb-3">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="relative shrink-0">
-                    <img
-                      src={colab.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150"}
-                      alt={colab.nome}
-                      className="w-10 h-10 rounded-full object-cover border border-zinc-200 dark:border-zinc-800"
-                    />
+                    {colab.avatarUrl ? (
+                      <img
+                        src={colab.avatarUrl}
+                        alt={colab.nome}
+                        className="w-10 h-10 rounded-full object-cover border border-zinc-200 dark:border-zinc-800"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                          const next = e.currentTarget.nextElementSibling as HTMLElement | null;
+                          if (next) next.style.display = "flex";
+                        }}
+                      />
+                    ) : null}
+                    <div
+                      className={`w-10 h-10 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 text-white font-black text-xs items-center justify-center uppercase ${
+                        colab.avatarUrl ? "hidden" : "flex"
+                      }`}
+                    >
+                      {(colab.comoQuerSerChamado || colab.nome || "C")[0]}
+                    </div>
                     <span
                       className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white dark:border-zinc-900 ${
                         emCall ? "bg-emerald-500 animate-pulse" : "bg-zinc-400"

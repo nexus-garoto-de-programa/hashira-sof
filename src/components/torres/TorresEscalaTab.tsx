@@ -22,6 +22,7 @@ import {
   getSemanaRodizioAtual,
 } from "@/lib/torresData";
 import { UserAccount, fetchUsersFromSupabase } from "@/lib/authPermissions";
+import { Tag, UserTag, fetchTags, fetchUserTags, userHasTag } from "@/lib/userTags";
 import { useRealtimeSubscription } from "@/lib/realtimeSync";
 import { UserTagBadge } from "@/components/UserTagBadge";
 
@@ -30,37 +31,13 @@ interface TorresEscalaTabProps {
   isAdminView: boolean;
 }
 
-interface TorreInfo {
-  key: string;
+interface TorreItem {
+  id: string;
   nome: string;
-  ids: string[];
-  emails: string[];
   apelido: string;
+  avatarUrl?: string;
+  userAccount: UserAccount;
 }
-
-const TORRES_DEFINIDAS: TorreInfo[] = [
-  {
-    key: "debora",
-    nome: "Débora Veras",
-    apelido: "Débora",
-    ids: ["usr-1786476388116"],
-    emails: ["dhebora9502@gmail.com"],
-  },
-  {
-    key: "mazoti",
-    nome: "Gabriel Mazoti",
-    apelido: "Mazoti",
-    ids: ["usr-1786476578880"],
-    emails: ["mazoti209@hotmail.com"],
-  },
-  {
-    key: "xarada",
-    nome: "Denys Sylvestre (Xarada)",
-    apelido: "Xarada",
-    ids: ["usr-1786476427231"],
-    emails: ["xarada.suportehashira@gmail.com"],
-  },
-];
 
 export const TorresEscalaTab: React.FC<TorresEscalaTabProps> = ({
   currentUser,
@@ -68,6 +45,8 @@ export const TorresEscalaTab: React.FC<TorresEscalaTabProps> = ({
 }) => {
   const [turnos, setTurnos] = useState<EscalaTurno[]>([]);
   const [users, setUsers] = useState<UserAccount[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [userTags, setUserTags] = useState<UserTag[]>([]);
   const [loading, setLoading] = useState(true);
 
   const semanaAtual = useMemo(() => getSemanaRodizioAtual(), []);
@@ -75,12 +54,16 @@ export const TorresEscalaTab: React.FC<TorresEscalaTabProps> = ({
 
   const carregarDados = async () => {
     try {
-      const [turnosData, usersData] = await Promise.all([
+      const [turnosData, usersData, tagsData, userTagsData] = await Promise.all([
         fetchEscalaTurnos(),
         fetchUsersFromSupabase(),
+        fetchTags(),
+        fetchUserTags(),
       ]);
       setTurnos(turnosData);
       setUsers(usersData);
+      setTags(tagsData);
+      setUserTags(userTagsData);
     } catch (e) {
       console.error("[ESCALA] Erro ao carregar dados:", e);
     } finally {
@@ -93,40 +76,41 @@ export const TorresEscalaTab: React.FC<TorresEscalaTabProps> = ({
   }, []);
 
   useRealtimeSubscription({
-    topics: ["escala"],
+    topics: ["escala", "tags", "user_tags", "usuarios"],
     onUpdate: carregarDados,
   });
 
-  // Mapeia usuário do sistema para cada torre
-  const torresEnriquecidas = useMemo(() => {
-    return TORRES_DEFINIDAS.map((def) => {
-      const matched = users.find(
-        (u) =>
-          def.ids.includes(u.id) ||
-          def.emails.some((em) => em.toLowerCase() === u.email?.toLowerCase().trim()) ||
-          u.comoQuerSerChamado?.toLowerCase().trim() === def.apelido.toLowerCase() ||
-          u.nickname?.toLowerCase().trim() === def.apelido.toLowerCase()
-      );
-      return {
-        ...def,
-        userAccount: matched,
-        resolvedId: matched?.id || def.ids[0],
-      };
-    });
-  }, [users]);
+  // Mapeia os usuários que possuem a tag "Torre" de forma 100% dinâmica
+  const torresEnriquecidas = useMemo<TorreItem[]>(() => {
+    return users
+      .filter((u) => userHasTag(u, "torre", userTags, tags))
+      .map((u) => ({
+        id: u.id,
+        nome: u.nome,
+        apelido: u.comoQuerSerChamado || u.nickname || u.nome,
+        avatarUrl: u.avatarUrl,
+        userAccount: u,
+      }))
+      .sort((a, b) => a.apelido.localeCompare(b.apelido, "pt-BR"));
+  }, [users, userTags, tags]);
 
   // Identifica qual torre corresponde ao usuário logado
-  const minhaTorre = useMemo(() => {
-    return torresEnriquecidas.find((t) => {
-      return (
-        t.resolvedId === currentUser.id ||
-        t.ids.includes(currentUser.id) ||
-        t.emails.some((e) => e.toLowerCase() === currentUser.email?.toLowerCase().trim()) ||
-        t.apelido.toLowerCase() === currentUser.comoQuerSerChamado?.toLowerCase().trim() ||
-        t.apelido.toLowerCase() === currentUser.nickname?.toLowerCase().trim()
-      );
-    });
-  }, [torresEnriquecidas, currentUser]);
+  const minhaTorre = useMemo<TorreItem | null>(() => {
+    if (!currentUser) return null;
+    const isTorre = userHasTag(currentUser, "torre", userTags, tags);
+    if (!isTorre) return null;
+
+    const matched = torresEnriquecidas.find((t) => t.id === currentUser.id);
+    if (matched) return matched;
+
+    return {
+      id: currentUser.id,
+      nome: currentUser.nome,
+      apelido: currentUser.comoQuerSerChamado || currentUser.nickname || currentUser.nome,
+      avatarUrl: currentUser.avatarUrl,
+      userAccount: currentUser,
+    };
+  }, [torresEnriquecidas, currentUser, userTags, tags]);
 
   // Helper para obter turnos de um colaborador em um dia específico (e ciclo se fim de semana)
   const getTurnosDoColaborador = (
@@ -252,16 +236,33 @@ export const TorresEscalaTab: React.FC<TorresEscalaTabProps> = ({
                   <tr>
                     <th className="px-5 py-3.5 w-44">Período / Dias</th>
                     {torresEnriquecidas.map((torre) => (
-                      <th key={torre.key} className="px-5 py-3.5">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 text-white font-black text-xs flex items-center justify-center uppercase">
+                      <th key={torre.id} className="px-5 py-3.5">
+                        <div className="flex items-center gap-2.5">
+                          {/* Foto real com fallback de iniciais */}
+                          {torre.avatarUrl ? (
+                            <img
+                              src={torre.avatarUrl}
+                              alt={torre.apelido}
+                              className="w-8 h-8 rounded-full object-cover border border-purple-500/30 shadow-xs shrink-0"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                                const next = e.currentTarget.nextElementSibling as HTMLElement | null;
+                                if (next) next.style.display = "flex";
+                              }}
+                            />
+                          ) : null}
+                          <div
+                            className={`w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 text-white font-black text-xs items-center justify-center uppercase shrink-0 ${
+                              torre.avatarUrl ? "hidden" : "flex"
+                            }`}
+                          >
                             {torre.apelido[0]}
                           </div>
-                          <div>
-                            <div className="font-extrabold text-xs text-slate-800 dark:text-slate-100">
+                          <div className="min-w-0">
+                            <div className="font-extrabold text-xs text-slate-800 dark:text-slate-100 truncate">
                               {torre.apelido}
                             </div>
-                            <div className="text-[10px] font-medium text-slate-400">
+                            <div className="text-[10px] font-medium text-slate-400 truncate">
                               {torre.nome}
                             </div>
                           </div>
@@ -283,32 +284,39 @@ export const TorresEscalaTab: React.FC<TorresEscalaTabProps> = ({
                       </span>
                     </td>
                     {torresEnriquecidas.map((torre) => {
-                      const turnosSeg = getTurnosDoColaborador(torre.resolvedId, "segunda");
+                      const turnosSeg = getTurnosDoColaborador(torre.id, "segunda");
                       return (
-                        <td key={torre.key} className="px-5 py-4 align-top">
+                        <td key={torre.id} className="px-5 py-4 align-top">
                           <div className="space-y-1.5">
-                            {turnosSeg.map((t) => (
-                              <div
-                                key={t.id}
-                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono text-xs font-bold mr-2 ${
-                                  t.cruza_madrugada
-                                    ? "bg-purple-950/60 text-purple-200 border border-purple-500/40 shadow-xs"
-                                    : "bg-[#5B50E5]/10 text-[#5B50E5] dark:text-indigo-300 border border-[#5B50E5]/20"
-                                }`}
-                              >
-                                {t.cruza_madrugada ? (
-                                  <Moon className="w-3 h-3 text-purple-400" />
-                                ) : (
-                                  <Clock className="w-3 h-3 text-[#5B50E5]" />
-                                )}
-                                <span>{t.hora_inicio} – {t.hora_fim}</span>
-                                {t.cruza_madrugada && (
-                                  <span className="text-[9px] font-sans px-1 rounded bg-purple-500/20 text-purple-300 font-extrabold uppercase">
-                                    Madrugada
-                                  </span>
-                                )}
-                              </div>
-                            ))}
+                            {turnosSeg.length === 0 ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-400">
+                                <Coffee className="w-3 h-3 text-slate-400" />
+                                Sem escala
+                              </span>
+                            ) : (
+                              turnosSeg.map((t) => (
+                                <div
+                                  key={t.id}
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono text-xs font-bold mr-2 ${
+                                    t.cruza_madrugada
+                                      ? "bg-purple-950/60 text-purple-200 border border-purple-500/40 shadow-xs"
+                                      : "bg-[#5B50E5]/10 text-[#5B50E5] dark:text-indigo-300 border border-[#5B50E5]/20"
+                                  }`}
+                                >
+                                  {t.cruza_madrugada ? (
+                                    <Moon className="w-3 h-3 text-purple-400" />
+                                  ) : (
+                                    <Clock className="w-3 h-3 text-[#5B50E5]" />
+                                  )}
+                                  <span>{t.hora_inicio} – {t.hora_fim}</span>
+                                  {t.cruza_madrugada && (
+                                    <span className="text-[9px] font-sans px-1 rounded bg-purple-500/20 text-purple-300 font-extrabold uppercase">
+                                      Madrugada
+                                    </span>
+                                  )}
+                                </div>
+                              ))
+                            )}
                           </div>
                         </td>
                       );
@@ -327,32 +335,39 @@ export const TorresEscalaTab: React.FC<TorresEscalaTabProps> = ({
                       </span>
                     </td>
                     {torresEnriquecidas.map((torre) => {
-                      const turnosQui = getTurnosDoColaborador(torre.resolvedId, "quinta");
+                      const turnosQui = getTurnosDoColaborador(torre.id, "quinta");
                       return (
-                        <td key={torre.key} className="px-5 py-4 align-top">
+                        <td key={torre.id} className="px-5 py-4 align-top">
                           <div className="space-y-1.5">
-                            {turnosQui.map((t) => (
-                              <div
-                                key={t.id}
-                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono text-xs font-bold mr-2 ${
-                                  t.cruza_madrugada
-                                    ? "bg-purple-950/60 text-purple-200 border border-purple-500/40 shadow-xs"
-                                    : "bg-[#5B50E5]/10 text-[#5B50E5] dark:text-indigo-300 border border-[#5B50E5]/20"
-                                }`}
-                              >
-                                {t.cruza_madrugada ? (
-                                  <Moon className="w-3 h-3 text-purple-400" />
-                                ) : (
-                                  <Clock className="w-3 h-3 text-[#5B50E5]" />
-                                )}
-                                <span>{t.hora_inicio} – {t.hora_fim}</span>
-                                {t.cruza_madrugada && (
-                                  <span className="text-[9px] font-sans px-1 rounded bg-purple-500/20 text-purple-300 font-extrabold uppercase">
-                                    Madrugada
-                                  </span>
-                                )}
-                              </div>
-                            ))}
+                            {turnosQui.length === 0 ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-400">
+                                <Coffee className="w-3 h-3 text-slate-400" />
+                                Sem escala
+                              </span>
+                            ) : (
+                              turnosQui.map((t) => (
+                                <div
+                                  key={t.id}
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono text-xs font-bold mr-2 ${
+                                    t.cruza_madrugada
+                                      ? "bg-purple-950/60 text-purple-200 border border-purple-500/40 shadow-xs"
+                                      : "bg-[#5B50E5]/10 text-[#5B50E5] dark:text-indigo-300 border border-[#5B50E5]/20"
+                                  }`}
+                                >
+                                  {t.cruza_madrugada ? (
+                                    <Moon className="w-3 h-3 text-purple-400" />
+                                  ) : (
+                                    <Clock className="w-3 h-3 text-[#5B50E5]" />
+                                  )}
+                                  <span>{t.hora_inicio} – {t.hora_fim}</span>
+                                  {t.cruza_madrugada && (
+                                    <span className="text-[9px] font-sans px-1 rounded bg-purple-500/20 text-purple-300 font-extrabold uppercase">
+                                      Madrugada
+                                    </span>
+                                  )}
+                                </div>
+                              ))
+                            )}
                           </div>
                         </td>
                       );
@@ -378,7 +393,7 @@ export const TorresEscalaTab: React.FC<TorresEscalaTabProps> = ({
                   Sábado e Domingo (Rodízio Cíclico de 3 Semanas)
                 </h3>
                 <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                  Cobertura de fins de semana alternada entre as 3 torres a cada 7 dias
+                  Cobertura de fins de semana alternada entre as torres a cada 7 dias
                 </p>
               </div>
 
@@ -401,9 +416,28 @@ export const TorresEscalaTab: React.FC<TorresEscalaTabProps> = ({
                   <tr>
                     <th className="px-5 py-3.5 w-44">Semana do Ciclo</th>
                     {torresEnriquecidas.map((torre) => (
-                      <th key={torre.key} className="px-5 py-3.5">
+                      <th key={torre.id} className="px-5 py-3.5">
                         <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-xs text-slate-800 dark:text-slate-100">
+                          {torre.avatarUrl ? (
+                            <img
+                              src={torre.avatarUrl}
+                              alt={torre.apelido}
+                              className="w-5 h-5 rounded-full object-cover border border-purple-500/30 shrink-0"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                                const next = e.currentTarget.nextElementSibling as HTMLElement | null;
+                                if (next) next.style.display = "flex";
+                              }}
+                            />
+                          ) : null}
+                          <div
+                            className={`w-5 h-5 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 text-white font-black text-[10px] items-center justify-center uppercase shrink-0 ${
+                              torre.avatarUrl ? "hidden" : "flex"
+                            }`}
+                          >
+                            {torre.apelido[0]}
+                          </div>
+                          <span className="font-extrabold text-xs text-slate-800 dark:text-slate-100 truncate">
                             {torre.apelido}
                           </span>
                         </div>
@@ -442,11 +476,11 @@ export const TorresEscalaTab: React.FC<TorresEscalaTabProps> = ({
                         </td>
 
                         {torresEnriquecidas.map((torre) => {
-                          const turnoSab = getTurnosDoColaborador(torre.resolvedId, "sabado", sem);
-                          const turnoDom = getTurnosDoColaborador(torre.resolvedId, "domingo", sem);
+                          const turnoSab = getTurnosDoColaborador(torre.id, "sabado", sem);
+                          const turnoDom = getTurnosDoColaborador(torre.id, "domingo", sem);
 
                           return (
-                            <td key={torre.key} className="px-5 py-4 align-top">
+                            <td key={torre.id} className="px-5 py-4 align-top">
                               <div className="space-y-1.5">
                                 {/* Sábado */}
                                 <div className="flex items-center gap-2">
@@ -498,8 +532,8 @@ export const TorresEscalaTab: React.FC<TorresEscalaTabProps> = ({
         <div className="space-y-8">
           {/* Card de Resumo do Próximo Fim de Semana */}
           {(() => {
-            const turnoSabAtual = getTurnosDoColaborador(minhaTorre.resolvedId, "sabado", semanaAtual);
-            const turnoDomAtual = getTurnosDoColaborador(minhaTorre.resolvedId, "domingo", semanaAtual);
+            const turnoSabAtual = getTurnosDoColaborador(minhaTorre.id, "sabado", semanaAtual);
+            const turnoDomAtual = getTurnosDoColaborador(minhaTorre.id, "domingo", semanaAtual);
             const temPlantaoFimSemana = turnoSabAtual.length > 0 || turnoDomAtual.length > 0;
 
             return (
@@ -510,29 +544,52 @@ export const TorresEscalaTab: React.FC<TorresEscalaTabProps> = ({
                   borderColor: temPlantaoFimSemana ? "rgba(139, 92, 246, 0.3)" : "rgba(16, 185, 129, 0.3)",
                 }}
               >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                        temPlantaoFimSemana
-                          ? "bg-purple-500/20 text-purple-600 dark:text-purple-300"
-                          : "bg-emerald-500/20 text-emerald-600 dark:text-emerald-300"
-                      }`}
-                    >
-                      {temPlantaoFimSemana ? "⚡ Plantão neste Fim de Semana" : "🏖️ Fim de Semana Livre"}
-                    </span>
-                    <span className="text-xs text-slate-400">
-                      Ciclo: Semana {semanaAtual} de 3
-                    </span>
+                <div className="flex items-center gap-4">
+                  {/* Avatar do Colaborador */}
+                  {minhaTorre.avatarUrl ? (
+                    <img
+                      src={minhaTorre.avatarUrl}
+                      alt={minhaTorre.apelido}
+                      className="w-14 h-14 rounded-full object-cover border-2 border-purple-500/40 shadow-sm shrink-0"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                        const next = e.currentTarget.nextElementSibling as HTMLElement | null;
+                        if (next) next.style.display = "flex";
+                      }}
+                    />
+                  ) : null}
+                  <div
+                    className={`w-14 h-14 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 text-white font-black text-lg items-center justify-center uppercase shrink-0 ${
+                      minhaTorre.avatarUrl ? "hidden" : "flex"
+                    }`}
+                  >
+                    {minhaTorre.apelido[0]}
                   </div>
-                  <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">
-                    {temPlantaoFimSemana
-                      ? "Você possui turno agendado neste fim de semana"
-                      : "Você está 100% de folga no próximo sábado e domingo!"}
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Fique atento ao registro correto do seu ponto eletrônico durante o expediente.
-                  </p>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                          temPlantaoFimSemana
+                            ? "bg-purple-500/20 text-purple-600 dark:text-purple-300"
+                            : "bg-emerald-500/20 text-emerald-600 dark:text-emerald-300"
+                        }`}
+                      >
+                        {temPlantaoFimSemana ? "⚡ Plantão neste Fim de Semana" : "🏖️ Fim de Semana Livre"}
+                      </span>
+                      <span className="text-xs text-slate-400">
+                        Ciclo: Semana {semanaAtual} de 3
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">
+                      {temPlantaoFimSemana
+                        ? "Você possui turno agendado neste fim de semana"
+                        : "Você está 100% de folga no próximo sábado e domingo!"}
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Fique atento ao registro correto do seu ponto eletrônico durante o expediente.
+                    </p>
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
@@ -588,7 +645,7 @@ export const TorresEscalaTab: React.FC<TorresEscalaTabProps> = ({
                 { dia: "quinta" as DiaSemana, label: "Quinta-feira", short: "Qui" },
                 { dia: "sexta" as DiaSemana, label: "Sexta-feira", short: "Sex" },
               ].map(({ dia, label, short }) => {
-                const turnosDia = getTurnosDoColaborador(minhaTorre.resolvedId, dia);
+                const turnosDia = getTurnosDoColaborador(minhaTorre.id, dia);
 
                 return (
                   <div
@@ -609,25 +666,32 @@ export const TorresEscalaTab: React.FC<TorresEscalaTabProps> = ({
                     </div>
 
                     <div className="space-y-1.5">
-                      {turnosDia.map((t) => (
-                        <div
-                          key={t.id}
-                          className={`p-2 rounded-xl text-xs font-mono font-extrabold flex items-center justify-between ${
-                            t.cruza_madrugada
-                              ? "bg-purple-950/40 text-purple-200 border border-purple-500/30"
-                              : "bg-white dark:bg-zinc-800 text-slate-800 dark:text-slate-100 border border-border"
-                          }`}
-                        >
-                          <div className="flex items-center gap-1.5">
-                            {t.cruza_madrugada ? (
-                              <Moon className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                            ) : (
-                              <Clock className="w-3.5 h-3.5 text-[#5B50E5] shrink-0" />
-                            )}
-                            <span>{t.hora_inicio} – {t.hora_fim}</span>
-                          </div>
+                      {turnosDia.length === 0 ? (
+                        <div className="p-2 rounded-xl text-xs font-medium text-slate-400 flex items-center gap-1">
+                          <Coffee className="w-3.5 h-3.5" />
+                          <span>Folga</span>
                         </div>
-                      ))}
+                      ) : (
+                        turnosDia.map((t) => (
+                          <div
+                            key={t.id}
+                            className={`p-2 rounded-xl text-xs font-mono font-extrabold flex items-center justify-between ${
+                              t.cruza_madrugada
+                                ? "bg-purple-950/40 text-purple-200 border border-purple-500/30"
+                                : "bg-white dark:bg-zinc-800 text-slate-800 dark:text-slate-100 border border-border"
+                            }`}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              {t.cruza_madrugada ? (
+                                <Moon className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                              ) : (
+                                <Clock className="w-3.5 h-3.5 text-[#5B50E5] shrink-0" />
+                              )}
+                              <span>{t.hora_inicio} – {t.hora_fim}</span>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                 );
@@ -658,8 +722,8 @@ export const TorresEscalaTab: React.FC<TorresEscalaTabProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {([1, 2, 3] as const).map((sem) => {
                 const isCurrent = semanaAtual === sem;
-                const sab = getTurnosDoColaborador(minhaTorre.resolvedId, "sabado", sem);
-                const dom = getTurnosDoColaborador(minhaTorre.resolvedId, "domingo", sem);
+                const sab = getTurnosDoColaborador(minhaTorre.id, "sabado", sem);
+                const dom = getTurnosDoColaborador(minhaTorre.id, "domingo", sem);
 
                 return (
                   <div
@@ -720,7 +784,7 @@ export const TorresEscalaTab: React.FC<TorresEscalaTabProps> = ({
         </div>
       )}
 
-      {/* Caso o usuário não seja Admin e não seja identificado como uma das 3 Torres */}
+      {/* Caso o usuário não seja Admin e não seja identificado como uma das Torres */}
       {!isAdminView && !minhaTorre && (
         <div
           className="coursue-card p-8 rounded-[28px] border text-center space-y-3"
@@ -731,7 +795,7 @@ export const TorresEscalaTab: React.FC<TorresEscalaTabProps> = ({
             Escala Individual não encontrada
           </h3>
           <p className="text-xs max-w-md mx-auto text-slate-500">
-            Seu usuário atual não está associado a nenhuma das 3 torres cadastradas (Débora, Mazoti ou Xarada). Caso faça parte da equipe, entre em contato com a administração.
+            Seu usuário atual não possui a tag <strong>Torre</strong> atribuída. Caso faça parte da equipe de operações, solicite a atribuição da tag a um administrador.
           </p>
         </div>
       )}

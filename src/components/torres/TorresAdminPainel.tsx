@@ -293,11 +293,25 @@ export const TorresAdminPainel: React.FC<TorresAdminPainelProps> = ({ currentUse
                     >
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2.5">
-                          <img
-                            src={u?.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150"}
-                            alt={u?.nome || "Avatar"}
-                            className="w-7 h-7 rounded-full object-cover border"
-                          />
+                          {u?.avatarUrl ? (
+                            <img
+                              src={u.avatarUrl}
+                              alt={u.nome || "Avatar"}
+                              className="w-7 h-7 rounded-full object-cover border border-purple-500/20 shrink-0"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                                const next = e.currentTarget.nextElementSibling as HTMLElement | null;
+                                if (next) next.style.display = "flex";
+                              }}
+                            />
+                          ) : null}
+                          <div
+                            className={`w-7 h-7 rounded-full bg-[#5B50E5]/15 text-[#5B50E5] font-black text-xs items-center justify-center uppercase shrink-0 ${
+                              u?.avatarUrl ? "hidden" : "flex"
+                            }`}
+                          >
+                            {(u?.comoQuerSerChamado || u?.nome || "C")[0]}
+                          </div>
                           <div>
                             <span className="font-bold block" style={{ color: "var(--text-primary)" }}>
                               {u?.comoQuerSerChamado || u?.nome || "Colaborador Removido"}

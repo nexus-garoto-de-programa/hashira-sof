@@ -3,7 +3,7 @@
 import { supabase } from "@/lib/supabase";
 import { notifyRealtimeChange } from "@/lib/realtimeSync";
 import { useEffect, useState, useCallback } from "react";
-import { UserAccount } from "@/lib/authPermissions";
+import { UserAccount, getStoredUsers } from "@/lib/authPermissions";
 
 export interface Tag {
   id: string;
@@ -287,21 +287,26 @@ export function userHasTag(
   );
   if (!targetTag) return false;
 
-  // Verifica se existe relação para o userId
-  const hasByUserId = allUserTags.some(
-    (ut) => ut.userId === user.id && ut.tagId === targetTag.id
-  );
-  if (hasByUserId) return true;
+  // 1. Verifica se existe relação direta para o userId
+  if (user.id) {
+    const hasByUserId = allUserTags.some(
+      (ut) => ut.userId === user.id && ut.tagId === targetTag.id
+    );
+    if (hasByUserId) return true;
+  }
 
-  // Fallback para e-mails conhecidos do seed se o ID for divergente
-  if (targetSlug === "torre" && user.email) {
+  // 2. Se não encontrou pelo id direto mas temos e-mail, resolve o ID real pelo cadastro de usuários
+  if (user.email) {
     const cleanEmail = user.email.toLowerCase().trim();
-    if (
-      cleanEmail === "xarada.suportehashira@gmail.com" ||
-      cleanEmail === "mazoti209@hotmail.com" ||
-      cleanEmail === "dhebora9502@gmail.com"
-    ) {
-      return true;
+    const storedUsers = getStoredUsers();
+    const matchedUser = storedUsers.find(
+      (u) => u.email && u.email.toLowerCase().trim() === cleanEmail
+    );
+    if (matchedUser && matchedUser.id !== user.id) {
+      const hasByMatchedId = allUserTags.some(
+        (ut) => ut.userId === matchedUser.id && ut.tagId === targetTag.id
+      );
+      if (hasByMatchedId) return true;
     }
   }
 
