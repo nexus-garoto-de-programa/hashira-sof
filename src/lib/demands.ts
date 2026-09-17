@@ -270,7 +270,9 @@ export async function fetchDemandasFromSupabase(): Promise<Demanda[]> {
             progresso: isConcluida ? 100 : d.progresso,
             anexos: existingLeg.anexos && existingLeg.anexos.length > 0 ? existingLeg.anexos : d.anexos,
             historico: existingLeg.historico && existingLeg.historico.length > 0 ? existingLeg.historico : d.historico,
+            colaboradorId: existingLeg.colaboradorId || d.colaboradorId,
             colaboradorEmail: existingLeg.colaboradorEmail || d.colaboradorEmail,
+            colaboradorNome: existingLeg.colaboradorNome || d.colaboradorNome,
           });
         } else {
           demandasMap.set(d.id, d);

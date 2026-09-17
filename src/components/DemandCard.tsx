@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { motion } from "framer-motion";
 import { Clock, ArrowRight, Paperclip } from "lucide-react";
 import { Demanda, HASHIRAS_SEED } from "@/lib/demands";
 
@@ -17,17 +16,42 @@ export const DemandCard: React.FC<DemandCardProps> = ({
   layoutMode = "carousel",
 }) => {
   const setor = HASHIRAS_SEED.find((s) => s.id === demanda.setorId) || {
-    badgeBg: "#EDE7F6",
-    badgeText: "#5E35B1",
+    badgeBg: "rgba(91, 80, 229, 0.1)",
+    badgeText: "#5B50E5",
     nome: demanda.setorNome,
   };
 
   const statusBadge = {
-    pendente: { bg: "#FEF3C7", text: "#D97706", label: "Pendente" },
-    em_andamento: { bg: "#E0F2FE", text: "#0369A1", label: "Em andamento" },
-    concluida: { bg: "#DCFCE7", text: "#15803D", label: "Concluída" },
-    atrasada: { bg: "#FEE2E2", text: "#DC2626", label: "Atrasada" },
-  }[demanda.status];
+    pendente: {
+      bg: "bg-amber-500/10 dark:bg-amber-500/15",
+      text: "text-amber-700 dark:text-amber-400",
+      border: "border-amber-500/20",
+      label: "Pendente",
+    },
+    em_andamento: {
+      bg: "bg-blue-500/10 dark:bg-blue-500/15",
+      text: "text-blue-700 dark:text-blue-400",
+      border: "border-blue-500/20",
+      label: "Em andamento",
+    },
+    concluida: {
+      bg: "bg-emerald-500/10 dark:bg-emerald-500/15",
+      text: "text-emerald-700 dark:text-emerald-400",
+      border: "border-emerald-500/20",
+      label: "Concluída",
+    },
+    atrasada: {
+      bg: "bg-rose-500/10 dark:bg-rose-500/15",
+      text: "text-rose-700 dark:text-rose-400",
+      border: "border-rose-500/20",
+      label: "Atrasada",
+    },
+  }[demanda.status] || {
+    bg: "bg-zinc-500/10",
+    text: "text-zinc-600 dark:text-zinc-400",
+    border: "border-zinc-500/20",
+    label: demanda.status,
+  };
 
   const formattedDate = new Date(demanda.prazo + "T00:00:00").toLocaleDateString("pt-BR", {
     day: "2-digit",
@@ -35,91 +59,94 @@ export const DemandCard: React.FC<DemandCardProps> = ({
   });
 
   return (
-    <motion.div
-      whileHover={{ y: -4, scale: 1.01 }}
-      transition={{ duration: 0.2, ease: "easeOut" }}
-      className={`coursue-card flex flex-col justify-between p-5 rounded-[20px] shadow-sm hover:shadow-md transition-all ${
-        layoutMode === "carousel" ? "w-[300px] shrink-0" : "w-full"
+    <div
+      onClick={() => onOpenDetails(demanda)}
+      className={`coursue-card flex flex-col justify-between p-4 rounded-xl transition-all cursor-pointer group ${
+        layoutMode === "carousel" ? "w-[290px] shrink-0" : "w-full"
       }`}
+      style={{
+        backgroundColor: "var(--surface)",
+        borderColor: "var(--border)",
+      }}
     >
       <div>
-        {/* Header Tags */}
-        <div className="flex items-center justify-between gap-2 mb-3">
+        {/* Header Badges */}
+        <div className="flex items-center justify-between gap-2 mb-2.5">
           <span
-            className="text-[11px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-lg"
-            style={{ background: setor.badgeBg, color: setor.badgeText }}
+            className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md truncate max-w-[150px]"
+            style={{ backgroundColor: setor.badgeBg, color: setor.badgeText }}
           >
             {demanda.setorNome}
           </span>
           <span
-            className="text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase"
-            style={{ background: statusBadge.bg, color: statusBadge.text }}
+            className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase border ${statusBadge.bg} ${statusBadge.text} ${statusBadge.border}`}
           >
             {statusBadge.label}
           </span>
         </div>
 
-        {/* Title */}
-        <h3 className="font-extrabold text-[15px] line-clamp-2 mb-2 leading-snug font-['Plus_Jakarta_Sans']" style={{ color: 'var(--text-primary)' }}>
+        {/* Título de 14px com contraste alto */}
+        <h3
+          className="font-semibold text-sm line-clamp-2 mb-1.5 leading-snug group-hover:text-[#5B50E5] transition-colors"
+          style={{ color: "var(--text-primary)" }}
+        >
           {demanda.titulo}
         </h3>
 
-        {/* Description */}
-        <p className="text-xs line-clamp-2 mb-4 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-          {demanda.descricao}
-        </p>
+        {/* Descrição legível */}
+        {demanda.descricao && (
+          <p
+            className="text-xs line-clamp-2 mb-3 leading-relaxed"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            {demanda.descricao}
+          </p>
+        )}
       </div>
 
-      <div>
-        {/* Progress Bar */}
-        <div className="space-y-1.5 mb-4">
-          <div className="flex justify-between text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>
+      <div className="mt-2 space-y-3">
+        {/* Barra de Progresso Semântica */}
+        <div className="space-y-1">
+          <div className="flex justify-between text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>
             <span>Progresso</span>
-            <span className="font-bold" style={{ color: 'var(--text-primary)' }}>{demanda.progresso}%</span>
+            <span className="font-semibold" style={{ color: "var(--text-primary)" }}>
+              {demanda.progresso}%
+            </span>
           </div>
-          <div className="progress-bar-track h-1.5 rounded-full overflow-hidden">
-            <motion.div
-              className="progress-bar-fill h-full rounded-full"
-              style={{
-                background:
-                  demanda.status === "concluida"
-                    ? "linear-gradient(90deg, #16A34A, #22C55E)"
-                    : "linear-gradient(90deg, #5B50E5, #8B7CF8)",
-              }}
-              initial={{ width: 0 }}
-              animate={{ width: `${demanda.progresso}%` }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
+          <div className="h-1.5 rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+            <div
+              className={`h-full rounded-full transition-all duration-300 ${
+                demanda.status === "concluida" ? "bg-emerald-500" : "bg-[#5B50E5]"
+              }`}
+              style={{ width: `${demanda.progresso}%` }}
             />
           </div>
         </div>
 
-        {/* Meta Info Footer */}
-        <div className="pt-3 flex items-center justify-between text-xs" style={{ borderTop: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1 font-semibold" style={{ color: 'var(--text-primary)' }}>
-              <Clock className="w-3.5 h-3.5 text-[#5B50E5]" />
+        {/* Rodapé de Metadados e Ação */}
+        <div
+          className="pt-2.5 flex items-center justify-between text-[11px]"
+          style={{ borderTop: "1px solid var(--border)", color: "var(--text-secondary)" }}
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="flex items-center gap-1 font-medium" style={{ color: "var(--text-primary)" }}>
+              <Clock className="w-3.5 h-3.5 text-zinc-400" />
               {formattedDate}
             </span>
             {demanda.anexos.length > 0 && (
-              <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              <span className="flex items-center gap-1 text-[10px] text-zinc-400">
                 <Paperclip className="w-3 h-3" />
                 {demanda.anexos.length}
               </span>
             )}
           </div>
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenDetails(demanda);
-            }}
-            className="inline-flex items-center gap-1 text-xs font-bold text-[#5B50E5] hover:text-[#483EA8] hover:underline"
-          >
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#5B50E5] group-hover:translate-x-0.5 transition-transform">
             <span>Ver detalhes</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
+            <ArrowRight className="w-3 h-3" />
+          </span>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };

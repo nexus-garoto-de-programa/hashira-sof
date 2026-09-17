@@ -146,8 +146,8 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         </div>
 
         {/* Navigation Group */}
-        <div className="p-4 space-y-1">
-          <p className="px-3 text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>
+        <div className="p-3 space-y-1">
+          <p className="px-3 text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>
             Menu Principal
           </p>
           {navItems.map((item) => {
@@ -157,8 +157,9 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all"
+                className="flex items-center gap-3 px-3 py-2 text-xs font-semibold transition-colors"
                 style={{
+                  borderRadius: "var(--radius-md)",
                   backgroundColor: active ? 'var(--active-nav-bg)' : 'transparent',
                   color: active ? 'var(--active-nav-text)' : 'var(--text-secondary)',
                 }}
@@ -175,7 +176,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                   }
                 }}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-4 h-4 shrink-0" />
                 <span>{item.label}</span>
               </Link>
             );
@@ -184,10 +185,11 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       </div>
 
       {/* Footer Profile & Role Switcher next to LogOut */}
-      <div className="p-4" style={{ borderTop: '1px solid var(--border)' }}>
+      <div className="p-3" style={{ borderTop: '1px solid var(--border)' }}>
         <div
-          className="p-3 rounded-2xl transition-all flex items-center justify-between gap-2 group"
+          className="p-2.5 transition-all flex items-center justify-between gap-2 group"
           style={{
+            borderRadius: "var(--radius-md)",
             backgroundColor: 'var(--surface-alt)',
             border: '1px solid var(--border)',
           }}

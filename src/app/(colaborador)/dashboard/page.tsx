@@ -24,6 +24,7 @@ import { getActiveUser, UserAccount, USERS_SEED } from "@/lib/authPermissions";
 import { supabase } from "@/lib/supabase";
 import { AppSidebar } from "@/components/AppSidebar";
 import { DemandCard } from "@/components/DemandCard";
+import { DemandCarousel } from "@/components/DemandCarousel";
 import { DemandDetailModal } from "@/components/DemandDetailModal";
 import { PerformanceRing } from "@/components/PerformanceRing";
 import { CreateDemandModal } from "@/components/CreateDemandModal";
@@ -31,6 +32,7 @@ import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from "rechar
 
 import { useRealtimeSubscription } from "@/lib/realtimeSync";
 import { PontoGateModal } from "@/components/torres/PontoGateModal";
+import { toast } from "sonner";
 
 type PeriodoFilter = "dia" | "semana" | "mes";
 
@@ -248,16 +250,24 @@ export default function CollaboratorDashboardPage() {
     }
   };
 
-  const handleCreateDemanda = (novaDemanda: Omit<Demanda, "id" | "criadoEm">) => {
+  const handleCreateDemanda = async (novaDemanda: Omit<Demanda, "id" | "criadoEm">) => {
     const id = "dem-" + Date.now();
     const objetoCompleto: Demanda = {
       ...novaDemanda,
       id,
       criadoEm: new Date().toISOString(),
-      // Garante que o email do colaborador seja salvo para matching futuro
       colaboradorEmail: novaDemanda.colaboradorEmail || user?.email,
     };
+    // 1. Atualização otimista imediata na UI
     updateDemandasState([objetoCompleto, ...demandas]);
+    // 2. Persistência garantida no Supabase
+    try {
+      await saveDemandaToSupabase(objetoCompleto);
+      toast.success("Demanda criada e sincronizada com sucesso!");
+    } catch (e) {
+      console.error("Erro ao persistir demanda no Supabase:", e);
+      toast.error("Erro ao salvar demanda no banco de dados.");
+    }
   };
 
   return (
@@ -325,89 +335,109 @@ export default function CollaboratorDashboardPage() {
           {/* Central Fluid Area */}
           <div className="space-y-8 min-w-0">
 
-            {/* Hero Greeting Banner (Coursue Style) */}
-            <section
-              className="coursue-banner relative p-8 md:p-10 shadow-xl overflow-hidden"
-              style={{ background: "linear-gradient(135deg, #5B50E5 0%, #3730A3 100%)" }}
-            >
-              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            {/* Desktop Header & Quick Metrics */}
+            <section className="space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <div className="inline-flex items-center gap-2 rounded-full px-3.5 py-1 text-xs font-semibold mb-3 bg-white/15 text-white">
-                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-                    Modelo Cascata — Painel do Colaborador
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#5B50E5]/10 text-[#5B50E5] border border-[#5B50E5]/20">
+                      Painel do Colaborador
+                    </span>
+                    <span className="text-xs text-zinc-400">
+                      {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}
+                    </span>
                   </div>
-                  <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight font-['Plus_Jakarta_Sans']">
-                    {greeting},{" "}
-                    <span className="text-[#C7C2F5]">{userName} 👋</span>
+                  <h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>
+                    {greeting}, <span className="text-[#5B50E5]">{userName}</span>
                   </h1>
-                  <p className="mt-2 text-sm text-white/80 max-w-xl">
-                    Você tem <strong className="text-white font-bold">{userDemandas.filter(d => d.status !== 'concluida').length} demandas pendentes</strong> neste período.
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
+                    Você tem <strong className="font-semibold text-[#5B50E5]">{userDemandas.filter(d => d.status !== 'concluida').length} demandas ativas</strong> sob sua responsabilidade.
                   </p>
                 </div>
 
-                {/* Quick Summary Cards (Pill style) */}
-                <div className="flex flex-wrap sm:flex-nowrap gap-3">
-                  <div className="bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-2xl text-white min-w-[130px]">
-                    <span className="text-[11px] font-semibold text-white/70 block uppercase">Hoje</span>
-                    <span className="text-2xl font-extrabold font-['Plus_Jakarta_Sans']">
-                      {userDemandas.filter(d => d.status === 'concluida').length}/{userDemandas.length}
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateModal(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#5B50E5] hover:bg-[#483EA8] text-white text-xs font-semibold shadow-xs transition-all active:scale-[0.98] cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Nova Demanda</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Grid de 3 Métricas Neutras Desktop */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <div
+                  className="p-4 rounded-xl border flex items-center justify-between"
+                  style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+                >
+                  <div>
+                    <span className="text-[11px] font-medium block text-zinc-500">Total Atribuídas</span>
+                    <span className="text-2xl font-bold block mt-0.5" style={{ color: "var(--text-primary)" }}>
+                      {userDemandas.length}
                     </span>
-                    <span className="text-[10px] text-emerald-300 block mt-1">Concluídas</span>
                   </div>
-                  <div className="bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-2xl text-white min-w-[130px]">
-                    <span className="text-[11px] font-semibold text-white/70 block uppercase">Esta Semana</span>
-                    <span className="text-2xl font-extrabold font-['Plus_Jakarta_Sans']">
-                      {userDemandas.filter(d => d.status === 'em_andamento').length}
+                  <span className="text-xs font-semibold px-2 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                    Geral
+                  </span>
+                </div>
+
+                <div
+                  className="p-4 rounded-xl border flex items-center justify-between"
+                  style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+                >
+                  <div>
+                    <span className="text-[11px] font-medium block text-zinc-500">Em Andamento</span>
+                    <span className="text-2xl font-bold block mt-0.5 text-blue-600 dark:text-blue-400">
+                      {userDemandas.filter(d => d.status === 'em_andamento' || d.status === 'pendente').length}
                     </span>
-                    <span className="text-[10px] text-[#C7C2F5] block mt-1">Em Andamento</span>
                   </div>
+                  <span className="text-xs font-semibold px-2 py-1 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                    Ativas
+                  </span>
+                </div>
+
+                <div
+                  className="p-4 rounded-xl border flex items-center justify-between"
+                  style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+                >
+                  <div>
+                    <span className="text-[11px] font-medium block text-zinc-500">Concluídas</span>
+                    <span className="text-2xl font-bold block mt-0.5 text-emerald-600 dark:text-emerald-400">
+                      {userDemandas.filter(d => d.status === 'concluida').length}
+                    </span>
+                  </div>
+                  <span className="text-xs font-semibold px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    Entregues
+                  </span>
                 </div>
               </div>
             </section>
 
             {/* Horizontal Carousel: Minhas Demandas */}
-            <section className="space-y-4">
+            <section className="space-y-3.5">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-extrabold font-['Plus_Jakarta_Sans']" style={{ color: 'var(--text-primary)' }}>
+                  <h2 className="text-base font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
                     Minhas Demandas
                   </h2>
-                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                    Arraste horizontalmente para navegar entre suas atribuições
+                  <p className="text-xs text-zinc-500">
+                    Arraste horizontalmente ou use as setas para navegar entre seus cards
                   </p>
                 </div>
-                <span className="text-xs font-bold text-[#5B50E5] px-3 py-1 rounded-full" style={{ backgroundColor: 'var(--brand-light)' }}>
-                  {filteredDemandas.length} demandas
+                <span className="text-xs font-semibold text-[#5B50E5] px-2.5 py-0.5 rounded-full bg-[#5B50E5]/10 border border-[#5B50E5]/20">
+                  {filteredDemandas.length} atribuições
                 </span>
               </div>
 
-              {/* Draggable Carousel — scroll horizontal por drag do mouse */}
-              <div
-                ref={carouselRef}
-                className="flex gap-4 pb-4 pt-1 no-scrollbar"
-                style={{
-                  cursor: "grab",
-                  overflowX: "auto",
-                  overflowY: "visible",
-                  WebkitOverflowScrolling: "touch",
-                  width: "100%",
-                }}
-                onMouseDown={handleCarouselMouseDown}
-                onMouseMove={handleCarouselMouseMove}
-                onMouseUp={handleCarouselMouseUp}
-                onMouseLeave={handleCarouselLeave}
-              >
-                <AnimatePresence>
-                  {filteredDemandas.map((demanda) => (
-                    <DemandCard
-                      key={demanda.id}
-                      demanda={demanda}
-                      onOpenDetails={(d) => setSelectedDemanda(d)}
-                      layoutMode="carousel"
-                    />
-                  ))}
-                </AnimatePresence>
-              </div>
+              {/* Carrossel de Alta Fidelidade com Pointer Events */}
+              <DemandCarousel
+                demandas={filteredDemandas}
+                onOpenDetails={(d) => setSelectedDemanda(d)}
+                onOpenCreateModal={() => setShowCreateModal(true)}
+              />
             </section>
 
             {/* Detailed Table Section: Suas Demandas */}
@@ -459,80 +489,89 @@ export default function CollaboratorDashboardPage() {
               </div>
 
               {/* Table */}
-              <div className="coursue-card overflow-hidden rounded-[20px]">
+              <div className="coursue-card overflow-hidden rounded-xl">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs" style={{ color: 'var(--text-primary)' }}>
-                    <thead className="text-[11px] font-bold uppercase tracking-wider" style={{ backgroundColor: 'var(--surface-alt)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border)' }}>
+                    <thead className="text-[10px] font-bold uppercase tracking-wider" style={{ backgroundColor: 'var(--surface-alt)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border)' }}>
                       <tr>
-                        <th className="px-6 py-4">Demanda</th>
-                        <th className="px-6 py-4">Setor</th>
-                        <th className="px-6 py-4">Prazo</th>
-                        <th className="px-6 py-4">Status</th>
-                        <th className="px-6 py-4">Progresso</th>
-                        <th className="px-6 py-4 text-right">Ação</th>
+                        <th className="px-5 py-3.5">Demanda</th>
+                        <th className="px-5 py-3.5">Setor</th>
+                        <th className="px-5 py-3.5">Prazo</th>
+                        <th className="px-5 py-3.5">Status</th>
+                        <th className="px-5 py-3.5">Progresso</th>
+                        <th className="px-5 py-3.5 text-right">Ação</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
-                      {filteredDemandas.map((d) => (
-                        <tr key={d.id} className="transition-colors" style={{ }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--surface-raised)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
-                          <td className="px-6 py-4 font-semibold">
-                            <div>
-                              <span className="block text-xs font-bold" style={{ color: 'var(--text-primary)' }}>
-                                {d.titulo}
-                              </span>
-                              <span className="text-[10px] line-clamp-1" style={{ color: 'var(--text-muted)' }}>
-                                {d.descricao}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase text-[#5B50E5]" style={{ backgroundColor: 'var(--brand-light)' }}>
-                              {d.setorNome}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                            {d.prazo}
-                          </td>
-                          <td className="px-6 py-4">
-                            <span
-                              className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase ${
-                                d.status === "concluida"
-                                  ? "bg-emerald-100 text-emerald-700"
-                                  : d.status === "em_andamento"
-                                  ? "bg-sky-100 text-sky-700"
-                                  : d.status === "atrasada"
-                                  ? "bg-rose-100 text-rose-700"
-                                  : "bg-amber-100 text-amber-700"
-                              }`}
-                            >
-                              {d.status.replace("_", " ")}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 w-32">
-                            <div className="flex items-center gap-2">
-                              <div className="progress-bar-track flex-1 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
-                                <div
-                                  className="progress-bar-fill h-full bg-[#5B50E5] rounded-full"
-                                  style={{ width: `${d.progresso}%` }}
-                                />
-                              </div>
-                              <span className="text-[10px] font-bold" style={{ color: 'var(--text-secondary)' }}>
-                                {d.progresso}%
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <button
-                              onClick={() => setSelectedDemanda(d)}
-                              className="p-2 rounded-xl text-[#5B50E5] hover:bg-[#5B50E5] hover:text-white transition-colors"
-                              style={{ backgroundColor: 'var(--surface-raised)' }}
-                              title="Abrir Detalhes"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
+                      {filteredDemandas.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="px-5 py-8 text-center text-xs text-zinc-500">
+                            Nenhuma demanda encontrada para os filtros selecionados.
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        filteredDemandas.map((d) => (
+                          <tr key={d.id} className="transition-colors hover:bg-zinc-500/5">
+                            <td className="px-5 py-3.5">
+                              <div>
+                                <span className="block text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
+                                  {d.titulo}
+                                </span>
+                                <span className="text-[11px] line-clamp-1 text-zinc-500">
+                                  {d.descricao}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-[#5B50E5]/10 text-[#5B50E5]">
+                                {d.setorNome}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3.5 text-xs text-zinc-500 font-medium">
+                              {d.prazo}
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <span
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase border ${
+                                  d.status === "concluida"
+                                    ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                                    : d.status === "em_andamento"
+                                    ? "bg-blue-500/10 text-blue-600 border-blue-500/20"
+                                    : d.status === "atrasada"
+                                    ? "bg-rose-500/10 text-rose-600 border-rose-500/20"
+                                    : "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                                }`}
+                              >
+                                {d.status.replace("_", " ")}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3.5 w-32">
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                                  <div
+                                    className={`h-full rounded-full ${
+                                      d.status === "concluida" ? "bg-emerald-500" : "bg-[#5B50E5]"
+                                    }`}
+                                    style={{ width: `${d.progresso}%` }}
+                                  />
+                                </div>
+                                <span className="text-[10px] font-semibold text-zinc-500">
+                                  {d.progresso}%
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-5 py-3.5 text-right">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedDemanda(d)}
+                                className="px-2.5 py-1 rounded-lg text-xs font-semibold text-[#5B50E5] hover:bg-[#5B50E5]/10 transition-colors"
+                              >
+                                Ver
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
