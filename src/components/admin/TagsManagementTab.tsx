@@ -8,10 +8,10 @@ import { UserTagBadge } from "@/components/UserTagBadge";
 import { toast } from "sonner";
 
 interface TagsManagementTabProps {
-  users: UserAccount[];
+  users?: UserAccount[];
 }
 
-export const TagsManagementTab: React.FC<TagsManagementTabProps> = ({ users }) => {
+export const TagsManagementTab: React.FC<TagsManagementTabProps> = ({ users = [] }) => {
   const { tags, userTags, saveTag, deleteTag } = useUserTags();
   const [showModal, setShowModal] = useState(false);
   const [editingTag, setEditingTag] = useState<Tag | null>(null);
@@ -126,7 +126,7 @@ export const TagsManagementTab: React.FC<TagsManagementTabProps> = ({ users }) =
           const assignedUserIds = userTags
             .filter((ut) => ut.tagId === t.id)
             .map((ut) => ut.userId);
-          const assignedUsers = users.filter((u) => assignedUserIds.includes(u.id));
+          const assignedUsers = (users || []).filter((u) => assignedUserIds.includes(u.id));
 
           return (
             <div
