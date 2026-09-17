@@ -19,6 +19,7 @@ export type RealtimeTopic =
   | "discord_status"
   | "tags"
   | "user_tags"
+  | "escala"
   | "all";
 
 // 1. Cross-Tab Broadcast Channel (instantâneo entre abas do mesmo navegador)

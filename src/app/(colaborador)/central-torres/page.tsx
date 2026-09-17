@@ -12,6 +12,7 @@ import {
   Sparkles,
   Clock,
   ListTodo,
+  CalendarClock,
 } from "lucide-react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { TorresHeaderPonto } from "@/components/torres/TorresHeaderPonto";
@@ -20,6 +21,7 @@ import { TorresTarefasDia } from "@/components/torres/TorresTarefasDia";
 import { TorresChecklistTab } from "@/components/torres/TorresChecklistTab";
 import { TorresDiscordStatus } from "@/components/torres/TorresDiscordStatus";
 import { TorresAdminPainel } from "@/components/torres/TorresAdminPainel";
+import { TorresEscalaTab } from "@/components/torres/TorresEscalaTab";
 import {
   getActiveUser,
   getAdminSimulatedRole,
@@ -31,7 +33,7 @@ import {
 } from "@/lib/operacoesData";
 import { useRealtimeSubscription } from "@/lib/realtimeSync";
 
-type TorresTab = "agenda" | "meu-dia" | "discord" | "admin-painel";
+type TorresTab = "agenda" | "meu-dia" | "escala" | "discord" | "admin-painel";
 
 export default function CentralTorresPage() {
   const router = useRouter();
@@ -127,6 +129,19 @@ export default function CentralTorresPage() {
 
           <button
             type="button"
+            onClick={() => setActiveTab("escala")}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all shrink-0 cursor-pointer ${
+              activeTab === "escala"
+                ? "bg-[#8B5CF6] text-white shadow-sm"
+                : "text-zinc-400 hover:text-zinc-200"
+            }`}
+          >
+            <CalendarClock className="w-4 h-4" />
+            <span>{isAdminView ? "Escala da Equipe (Panorâmica)" : "Minha Escala Semanal"}</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab("agenda")}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all shrink-0 cursor-pointer ${
               activeTab === "agenda"
@@ -180,6 +195,18 @@ export default function CentralTorresPage() {
             >
               <TorresTarefasDia currentUser={currentUser} />
               <TorresChecklistTab currentUser={currentUser} />
+            </motion.div>
+          )}
+
+          {activeTab === "escala" && (
+            <motion.div
+              key="escala"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15 }}
+            >
+              <TorresEscalaTab currentUser={currentUser} isAdminView={isAdminView} />
             </motion.div>
           )}
 

@@ -619,3 +619,157 @@ export async function simularDiscordStatus(
     return false;
   }
 }
+
+// ==========================================
+// 5. ESCALA SEMANAL DE TURNOS
+// ==========================================
+
+export type DiaSemana = "segunda" | "terca" | "quarta" | "quinta" | "sexta" | "sabado" | "domingo";
+
+export interface EscalaTurno {
+  id: string;
+  colaborador_id: string;
+  dia_semana: DiaSemana;
+  semana_ciclo?: 1 | 2 | 3; // só relevante para sabado/domingo (rodízio); undefined = turno fixo semanal
+  hora_inicio: string;      // HH:mm
+  hora_fim: string;         // HH:mm
+  cruza_madrugada?: boolean;// true para turnos tipo 21:00–01:00
+  criado_em?: string;
+  atualizado_em?: string;
+}
+
+export const STORAGE_KEY_ESCALA = "hashira_escala_cache_v1";
+
+// Segunda-feira âncora da Semana 1 do rodízio (14 de setembro de 2026)
+export const ESCALA_RODIZIO_ANCORA = "2026-09-14";
+
+export function getSemanaRodizioAtual(referenceDate = new Date()): 1 | 2 | 3 {
+  try {
+    const anchor = new Date(ESCALA_RODIZIO_ANCORA + "T00:00:00");
+    const target = new Date(referenceDate);
+    anchor.setHours(0, 0, 0, 0);
+    target.setHours(0, 0, 0, 0);
+
+    const diffMs = target.getTime() - anchor.getTime();
+    const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
+    const diffWeeks = Math.floor(diffMs / oneWeekMs);
+
+    // Módulo 3 seguro mesmo se for data anterior à âncora
+    const mod = ((diffWeeks % 3) + 3) % 3;
+    return (mod + 1) as 1 | 2 | 3;
+  } catch {
+    return 1;
+  }
+}
+
+export function getStoredEscalaTurnos(): EscalaTurno[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_ESCALA);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.error("[ESCALA] Erro ao ler cache local de escala:", e);
+  }
+  return [];
+}
+
+export function saveStoredEscalaTurnos(turnos: EscalaTurno[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEY_ESCALA, JSON.stringify(turnos));
+  } catch (e) {}
+}
+
+export async function fetchEscalaTurnos(colaboradorId?: string): Promise<EscalaTurno[]> {
+  try {
+    let query = supabase.from("escala_turnos").select("*").order("hora_inicio", { ascending: true });
+
+    if (colaboradorId && colaboradorId !== "todos") {
+      query = query.eq("colaborador_id", colaboradorId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.warn("[ESCALA] Erro ao buscar turnos no Supabase:", error.message);
+      const local = getStoredEscalaTurnos();
+      return colaboradorId && colaboradorId !== "todos"
+        ? local.filter((t) => t.colaborador_id === colaboradorId)
+        : local;
+    }
+
+    if (data) {
+      const turnos = data as EscalaTurno[];
+      if (!colaboradorId || colaboradorId === "todos") {
+        saveStoredEscalaTurnos(turnos);
+      }
+      return turnos;
+    }
+  } catch (e) {
+    console.error("[ESCALA] Exceção ao buscar escala:", e);
+  }
+
+  const fallback = getStoredEscalaTurnos();
+  return colaboradorId && colaboradorId !== "todos"
+    ? fallback.filter((t) => t.colaborador_id === colaboradorId)
+    : fallback;
+}
+
+export async function saveEscalaTurno(turno: Partial<EscalaTurno>): Promise<EscalaTurno | null> {
+  const id = turno.id || `turno-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+  const item: EscalaTurno = {
+    id,
+    colaborador_id: turno.colaborador_id || "",
+    dia_semana: turno.dia_semana || "segunda",
+    semana_ciclo: turno.semana_ciclo,
+    hora_inicio: turno.hora_inicio || "10:00",
+    hora_fim: turno.hora_fim || "18:00",
+    cruza_madrugada: !!turno.cruza_madrugada,
+    atualizado_em: new Date().toISOString(),
+  };
+
+  try {
+    const { data, error } = await supabase
+      .from("escala_turnos")
+      .upsert(item, { onConflict: "id" })
+      .select()
+      .single();
+
+    if (error) {
+      console.warn("[ESCALA] Erro ao salvar turno no Supabase:", error.message);
+    } else if (data) {
+      const local = getStoredEscalaTurnos().filter((t) => t.id !== id);
+      saveStoredEscalaTurnos([...local, data as EscalaTurno]);
+    }
+  } catch (e) {
+    console.error("[ESCALA] Exceção ao salvar turno:", e);
+  }
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("hashira_escala_updated", { detail: item }));
+    notifyRealtimeChange("escala");
+  }
+
+  return item;
+}
+
+export async function deleteEscalaTurno(id: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.from("escala_turnos").delete().eq("id", id);
+    if (error) {
+      console.warn("[ESCALA] Erro ao deletar turno no Supabase:", error.message);
+    }
+  } catch (e) {
+    console.error("[ESCALA] Exceção ao deletar turno:", e);
+  }
+
+  const local = getStoredEscalaTurnos().filter((t) => t.id !== id);
+  saveStoredEscalaTurnos(local);
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("hashira_escala_updated"));
+    notifyRealtimeChange("escala");
+  }
+
+  return true;
+}
