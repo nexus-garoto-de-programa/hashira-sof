@@ -333,6 +333,7 @@ export interface ChecklistTemplate {
   item: string;
   ordem: number;
   ativo: boolean;
+  colaborador_id?: string | null;
   criado_por?: string;
   criado_em?: string;
 }
@@ -350,21 +351,32 @@ export interface ChecklistItem {
 const STORAGE_KEY_CHECKLIST_TEMPLATES = "hashira_chk_templates_cache_v1";
 const STORAGE_KEY_CHECKLIST_ITENS = "hashira_chk_itens_cache_v1";
 
-export async function fetchChecklistTemplates(): Promise<ChecklistTemplate[]> {
+export async function fetchChecklistTemplates(colaboradorId?: string): Promise<ChecklistTemplate[]> {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from("checklist_templates")
       .select("*")
       .order("ordem", { ascending: true });
 
+    if (colaboradorId && colaboradorId !== "todos") {
+      query = query.or(`colaborador_id.is.null,colaborador_id.eq.${colaboradorId}`);
+    }
+
+    const { data, error } = await query;
+
     if (error) {
       console.warn("[CHECKLIST] Erro ao buscar templates:", error.message);
       const raw = localStorage.getItem(STORAGE_KEY_CHECKLIST_TEMPLATES);
-      return raw ? JSON.parse(raw) : [];
+      const list: ChecklistTemplate[] = raw ? JSON.parse(raw) : [];
+      return colaboradorId && colaboradorId !== "todos"
+        ? list.filter((t) => !t.colaborador_id || t.colaborador_id === colaboradorId)
+        : list;
     }
     if (data) {
-      if (typeof window !== "undefined") {
-        localStorage.setItem(STORAGE_KEY_CHECKLIST_TEMPLATES, JSON.stringify(data));
+      if (!colaboradorId || colaboradorId === "todos") {
+        if (typeof window !== "undefined") {
+          localStorage.setItem(STORAGE_KEY_CHECKLIST_TEMPLATES, JSON.stringify(data));
+        }
       }
       return data as ChecklistTemplate[];
     }
@@ -382,6 +394,7 @@ export async function saveChecklistTemplate(
     item: template.item,
     ordem: template.ordem ?? 99,
     ativo: template.ativo ?? true,
+    colaborador_id: template.colaborador_id || null,
     criado_por: template.criado_por,
     criado_em: template.criado_em || new Date().toISOString(),
   };
@@ -430,8 +443,11 @@ export async function fetchChecklistDoDia(colaboradorId: string, dataIso?: strin
     }
 
     // 2. Se não houver itens para hoje, replica os templates ativos (reset diário)
-    const templates = await fetchChecklistTemplates();
-    const ativos = templates.filter((t) => t.ativo);
+    // Traz apenas os itens gerais da empresa + os rituais exclusivos daquela torre
+    const templates = await fetchChecklistTemplates(colaboradorId);
+    const ativos = templates
+      .filter((t) => t.ativo && (!t.colaborador_id || t.colaborador_id === colaboradorId))
+      .sort((a, b) => (a.ordem ?? 99) - (b.ordem ?? 99));
 
     if (ativos.length > 0) {
       const novosItens: ChecklistItem[] = ativos.map((t, idx) => ({
