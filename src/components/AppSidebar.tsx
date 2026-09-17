@@ -127,21 +127,20 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     >
       {/* Brand Header */}
       <div>
-        <div className="p-5" style={{ borderBottom: '1px solid var(--border)' }}>
-          <Link href="/dashboard" className="flex items-center gap-3 group">
+        <div className="p-4 px-5" style={{ borderBottom: '1px solid var(--border)' }}>
+          <Link href="/dashboard" className="flex items-center justify-between group">
             <img
-              src={branding.logoUrl || DEFAULT_BRANDING.logoUrl}
-              alt={branding.nomeMarca || "HASHIRA OFICIAL"}
-              className="h-12 w-auto max-w-[120px] object-contain transition-transform group-hover:scale-105"
+              src={
+                theme === "dark"
+                  ? (branding.logoWhiteUrl || "/hashira-logo-white.png")
+                  : (branding.logoPurpleUrl || "/hashira-logo-purple.png")
+              }
+              alt={branding.nomeMarca || "HASHIRA"}
+              className="h-8 w-auto max-w-[140px] object-contain transition-transform group-hover:scale-105"
             />
-            <div>
-              <span className="font-extrabold text-xs uppercase tracking-widest text-[#5B50E5] block truncate max-w-[110px]">
-                {branding.nomeMarca || "Gestão Cascata"}
-              </span>
-              <span className="text-[10px] block truncate max-w-[110px]" style={{ color: 'var(--text-secondary)' }}>
-                {branding.slogan || "Central Hashira"}
-              </span>
-            </div>
+            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border" style={{ backgroundColor: "var(--surface-alt)", borderColor: "var(--border)", color: "var(--text-muted)" }}>
+              PRO
+            </span>
           </Link>
         </div>
 

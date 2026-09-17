@@ -115,18 +115,10 @@ export default function LoginPage() {
         {/* Top Logo Container */}
         <div className="relative z-10 flex items-center gap-4">
           <img
-            src={branding.logoUrl || DEFAULT_BRANDING.logoUrl}
-            alt={branding.nomeMarca || "HASHIRA OFICIAL"}
-            className="h-16 w-auto max-w-[180px] object-contain drop-shadow-2xl"
+            src={branding.logoWhiteUrl || "/hashira-logo-white.png"}
+            alt={branding.nomeMarca || "HASHIRA"}
+            className="h-14 w-auto max-w-[200px] object-contain drop-shadow-2xl"
           />
-          <div>
-            <span className="text-sm font-extrabold text-white tracking-widest uppercase block font-['Plus_Jakarta_Sans']">
-              {branding.nomeMarca || "Gestão Cascata"}
-            </span>
-            <span className="text-xs font-bold text-[#C7C2F5] block">
-              {branding.slogan || "Plataforma Oficial Hashira Sensi"}
-            </span>
-          </div>
         </div>
 
         {/* Central Headlines */}
@@ -159,6 +151,15 @@ export default function LoginPage() {
       {/* Lado Direito — Formulário de Login com Alternador */}
       <div className="flex flex-1 items-center justify-center p-6 md:p-12">
         <div className="w-full max-w-[440px]">
+          {/* Logo no Mobile */}
+          <div className="md:hidden flex justify-center mb-6">
+            <img
+              src="/hashira-logo-purple.png"
+              alt="HASHIRA"
+              className="h-10 w-auto object-contain"
+            />
+          </div>
+
           <div className="coursue-card p-8 sm:p-10 rounded-[28px] shadow-xl space-y-6">
             
             {/* Header */}

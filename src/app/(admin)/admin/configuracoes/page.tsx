@@ -949,7 +949,7 @@ function AdminConfiguracoesContent() {
                         type="text"
                         value={brandLogo}
                         onChange={(e) => setBrandLogo(e.target.value)}
-                        placeholder="https://... ou /hashira-logo-vertical.png"
+                        placeholder="https://... ou /hashira-logo-purple.png"
                         className="coursue-input text-xs py-2"
                       />
                     </div>

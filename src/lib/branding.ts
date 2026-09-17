@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 
 export interface AppBranding {
   logoUrl: string;
+  logoWhiteUrl?: string;
+  logoPurpleUrl?: string;
   faviconUrl: string;
   loginBgUrl: string;
   nomeMarca: string;
@@ -11,11 +13,13 @@ export interface AppBranding {
 }
 
 export const DEFAULT_BRANDING: AppBranding = {
-  logoUrl: "/hashira-logo-vertical.png",
+  logoUrl: "/hashira-logo-purple.png",
+  logoWhiteUrl: "/hashira-logo-white.png",
+  logoPurpleUrl: "/hashira-logo-purple.png",
   faviconUrl: "/favicon.ico",
   loginBgUrl: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200&auto=format&fit=crop&q=80",
-  nomeMarca: "Gestão Cascata",
-  slogan: "Central Hashira",
+  nomeMarca: "HASHIRA",
+  slogan: "Central Operacional",
 };
 
 const STORAGE_KEY_BRANDING = "hashira_custom_branding_v1";
