@@ -46,6 +46,9 @@ export const TorresChecklistTab: React.FC<TorresChecklistTabProps> = ({ currentU
   const [modalFiltroEscopo, setModalFiltroEscopo] = useState<string>("todos");
   const [savingTemplate, setSavingTemplate] = useState(false);
 
+  // Colaborador ativo sendo visualizado no checklist diário
+  const [colaboradorAtivoId, setColaboradorAtivoId] = useState<string>(currentUser.id);
+
   // Dados de usuários e tags para mapear Torres dinamicamente
   const [users, setUsers] = useState<UserAccount[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
@@ -72,10 +75,11 @@ export const TorresChecklistTab: React.FC<TorresChecklistTabProps> = ({ currentU
     }
   };
 
-  const carregarChecklist = async () => {
-    if (!currentUser.id) return;
+  const carregarChecklist = async (idAlvo?: string) => {
+    const idFinal = idAlvo || colaboradorAtivoId;
+    if (!idFinal) return;
     try {
-      const res = await fetchChecklistDoDia(currentUser.id);
+      const res = await fetchChecklistDoDia(idFinal);
       setItens(res);
     } finally {
       setLoading(false);
@@ -89,19 +93,9 @@ export const TorresChecklistTab: React.FC<TorresChecklistTabProps> = ({ currentU
   };
 
   useEffect(() => {
-    carregarChecklist();
     carregarTemplates();
     carregarTorres();
   }, [currentUser.id, isAdminView]);
-
-  useRealtimeSubscription({
-    topics: ["checklist", "tags", "user_tags", "usuarios"],
-    onUpdate: () => {
-      carregarChecklist();
-      carregarTemplates();
-      carregarTorres();
-    },
-  });
 
   // Lista dinâmica de Torres
   const torresDisponiveis = useMemo(() => {
@@ -114,6 +108,32 @@ export const TorresChecklistTab: React.FC<TorresChecklistTabProps> = ({ currentU
       }))
       .sort((a, b) => a.apelido.localeCompare(b.apelido, "pt-BR"));
   }, [users, userTags, tags]);
+
+  // Se for admin/gestor e o usuário atual não for uma torre, seleciona por padrão o Xarada (ou torre com ritual)
+  useEffect(() => {
+    if (isAdminView && torresDisponiveis.length > 0) {
+      const isUserTorre = userHasTag(currentUser, "torre", userTags, tags);
+      if (!isUserTorre && colaboradorAtivoId === currentUser.id) {
+        const xarada = torresDisponiveis.find((t) => t.id === "usr-1786476427231") || torresDisponiveis[0];
+        if (xarada) {
+          setColaboradorAtivoId(xarada.id);
+        }
+      }
+    }
+  }, [isAdminView, torresDisponiveis, currentUser, userTags, tags, colaboradorAtivoId]);
+
+  useEffect(() => {
+    carregarChecklist(colaboradorAtivoId);
+  }, [colaboradorAtivoId]);
+
+  useRealtimeSubscription({
+    topics: ["checklist", "tags", "user_tags", "usuarios"],
+    onUpdate: () => {
+      carregarChecklist(colaboradorAtivoId);
+      carregarTemplates();
+      carregarTorres();
+    },
+  });
 
   const torreNomeMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -147,11 +167,11 @@ export const TorresChecklistTab: React.FC<TorresChecklistTabProps> = ({ currentU
 
   const handleCriarAvulso = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!novoItemAvulso.trim() || !currentUser.id) return;
+    if (!novoItemAvulso.trim() || !colaboradorAtivoId) return;
 
     setSubmitting(true);
     try {
-      const res = await createChecklistItemAvulso(currentUser.id, novoItemAvulso.trim());
+      const res = await createChecklistItemAvulso(colaboradorAtivoId, novoItemAvulso.trim());
       if (res) {
         setItens((prev) => [...prev, res]);
         setNovoItemAvulso("");
@@ -226,39 +246,87 @@ export const TorresChecklistTab: React.FC<TorresChecklistTabProps> = ({ currentU
         border: "1px solid var(--border)",
       }}
     >
-      {/* Header com Progresso */}
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h3 className="text-base font-extrabold" style={{ color: "var(--text-primary)" }}>
-              Checklist Diário
-            </h3>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-500">
-              {percentual}% concluído
-            </span>
+      {/* Header com Progresso e Seletor de Torres (para Admin) */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-extrabold" style={{ color: "var(--text-primary)" }}>
+                Checklist Diário
+              </h3>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-500">
+                {percentual}% concluído
+              </span>
+            </div>
+            <p className="text-[11px] font-medium" style={{ color: "var(--text-muted)" }}>
+              {colaboradorAtivoId === currentUser.id
+                ? "Rituais diários obrigatórios, rotinas da empresa e tarefas do dia"
+                : `Checklist diário de ${torreNomeMap.get(colaboradorAtivoId) || "Torre"}`}
+            </p>
           </div>
-          <p className="text-[11px] font-medium" style={{ color: "var(--text-muted)" }}>
-            Rituais diários obrigatórios, rotinas da empresa e tarefas do dia
-          </p>
+
+          {isAdminView && (
+            <button
+              type="button"
+              onClick={() => setShowAdminModal(true)}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+              style={{
+                backgroundColor: "var(--surface-alt)",
+                border: "1px solid var(--border)",
+                color: "var(--text-primary)",
+              }}
+              title="Gerenciar itens fixos e rituais por torre"
+            >
+              <Settings className="w-3.5 h-3.5 text-[#5B50E5]" />
+              <span>Itens Fixos (Admin)</span>
+            </button>
+          )}
         </div>
 
-        {isAdminView && (
-          <button
-            type="button"
-            onClick={() => setShowAdminModal(true)}
-            className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-            style={{
-              backgroundColor: "var(--surface-alt)",
-              border: "1px solid var(--border)",
-              color: "var(--text-primary)",
-            }}
-            title="Gerenciar itens fixos e rituais por torre"
-          >
-            <Settings className="w-3.5 h-3.5 text-[#5B50E5]" />
-            <span>Itens Fixos (Admin)</span>
-          </button>
+        {/* Seletor de visualização de Torres para o Gestor/Admin */}
+        {isAdminView && torresDisponiveis.length > 0 && (
+          <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-zinc-100 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700/50 overflow-x-auto">
+            <span className="text-[10px] font-extrabold uppercase px-2 text-zinc-400 shrink-0">
+              Ver Checklist:
+            </span>
+            {torresDisponiveis.map((t) => {
+              const isSelected = colaboradorAtivoId === t.id;
+              const countRitual = templates.filter((tpl) => tpl.colaborador_id === t.id).length;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setColaboradorAtivoId(t.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                    isSelected
+                      ? "bg-[#5B50E5] text-white shadow-sm"
+                      : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/20"
+                  }`}
+                >
+                  <span>🎯 {t.apelido}</span>
+                  {countRitual > 0 && (
+                    <span className={`px-1.5 py-0.2 rounded-md text-[9px] font-extrabold ${isSelected ? "bg-white/20 text-white" : "bg-zinc-700 text-zinc-300"}`}>
+                      {countRitual}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setColaboradorAtivoId(currentUser.id)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                colaboradorAtivoId === currentUser.id
+                  ? "bg-[#5B50E5] text-white shadow-sm"
+                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/20"
+              }`}
+            >
+              <span>👤 Meu Checklist</span>
+            </button>
+          </div>
         )}
       </div>
+
 
       {/* Barra de Progresso */}
       <div className="space-y-1">
