@@ -17,6 +17,7 @@ import {
   Moon,
   Settings,
   UserRoundPlus,
+  Radio,
 } from "lucide-react";
 import {
   getActiveUser,
@@ -98,6 +99,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     ...(currentUser.permissoes?.acessoDashboard
       ? [{ href: "/dashboard", label: "Meu Painel", icon: Home }]
       : []),
+    { href: "/central-torres", label: "Central dos Torres", icon: Radio },
     { href: "/perfil", label: "Meu Perfil", icon: User },
     ...(currentUser.permissoes?.acessoOperacoes
       ? [{ href: "/operacoes", label: "Central de Operações", icon: Command }]

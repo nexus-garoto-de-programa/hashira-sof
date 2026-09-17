@@ -1,0 +1,19 @@
+{
+  "name": "hashira-discord-voice-bot",
+  "version": "1.0.0",
+  "description": "Bot dedicado para rastreamento de presença de voz da Central dos Torres (Hashira)",
+  "main": "index.mjs",
+  "type": "module",
+  "scripts": {
+    "start": "node index.mjs",
+    "dev": "node --watch index.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.48.0",
+    "discord.js": "^14.18.0",
+    "dotenv": "^16.4.7"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

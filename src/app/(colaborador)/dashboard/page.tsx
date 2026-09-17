@@ -30,6 +30,7 @@ import { CreateDemandModal } from "@/components/CreateDemandModal";
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 import { useRealtimeSubscription } from "@/lib/realtimeSync";
+import { PontoGateModal } from "@/components/torres/PontoGateModal";
 
 type PeriodoFilter = "dia" | "semana" | "mes";
 
@@ -261,6 +262,9 @@ export default function CollaboratorDashboardPage() {
 
   return (
     <div className="flex min-h-screen">
+      {/* Modal Bloqueador de Ponto de Entrada */}
+      <PontoGateModal currentUser={user} />
+
       {/* Sidebar Fixa Esquerda */}
       <AppSidebar userRole={user.papel} userName={userName} userEmail={user.email} />
 

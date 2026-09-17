@@ -13,6 +13,10 @@ export type RealtimeTopic =
   | "influenciadores"
   | "drive-design"
   | "drive_design_blocks"
+  | "agenda"
+  | "checklist"
+  | "ponto"
+  | "discord_status"
   | "all";
 
 // 1. Cross-Tab Broadcast Channel (instantâneo entre abas do mesmo navegador)
@@ -84,6 +88,10 @@ export function useRealtimeSubscription({
     window.addEventListener("hashira_branding_updated", handleTrigger);
     window.addEventListener("hashira_influenciadores_updated", handleTrigger);
     window.addEventListener("hashira_drive_design_updated", handleTrigger);
+    window.addEventListener("hashira_ponto_updated", handleTrigger);
+    window.addEventListener("hashira_agenda_updated", handleTrigger);
+    window.addEventListener("hashira_checklist_updated", handleTrigger);
+    window.addEventListener("hashira_discord_updated", handleTrigger);
 
     // 2. Escuta eventos cross-tab (outras abas)
     const channel = getBroadcastChannel();
@@ -134,6 +142,31 @@ export function useRealtimeSubscription({
           handleTrigger();
         }
       })
+      .on("postgres_changes", { event: "*", schema: "public", table: "pontos" }, () => {
+        if (topics.includes("all") || topics.includes("ponto")) {
+          handleTrigger();
+        }
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "agenda_eventos" }, () => {
+        if (topics.includes("all") || topics.includes("agenda")) {
+          handleTrigger();
+        }
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "checklist_itens" }, () => {
+        if (topics.includes("all") || topics.includes("checklist")) {
+          handleTrigger();
+        }
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "checklist_templates" }, () => {
+        if (topics.includes("all") || topics.includes("checklist")) {
+          handleTrigger();
+        }
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "discord_status" }, () => {
+        if (topics.includes("all") || topics.includes("discord_status")) {
+          handleTrigger();
+        }
+      })
       .subscribe();
 
     // 4. Auto-sincronização preventiva ao focar a janela ou aba
@@ -161,6 +194,10 @@ export function useRealtimeSubscription({
       window.removeEventListener("hashira_branding_updated", handleTrigger);
       window.removeEventListener("hashira_influenciadores_updated", handleTrigger);
       window.removeEventListener("hashira_drive_design_updated", handleTrigger);
+      window.removeEventListener("hashira_ponto_updated", handleTrigger);
+      window.removeEventListener("hashira_agenda_updated", handleTrigger);
+      window.removeEventListener("hashira_checklist_updated", handleTrigger);
+      window.removeEventListener("hashira_discord_updated", handleTrigger);
       window.removeEventListener("focus", handleFocus);
       window.removeEventListener("visibilitychange", handleFocus);
       clearInterval(interval);

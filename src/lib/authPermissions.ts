@@ -25,6 +25,7 @@ export interface UserAccount {
   setorNome: string;
   setoresNomes?: string[];
   avatarUrl: string;
+  discord_user_id?: string;
   permissoes: UserPermissions;
 }
 
@@ -159,6 +160,7 @@ export function mapSupabaseRowToUserAccount(row: any): UserAccount {
     setorNome: row.setor_nome || row.setorNome,
     setoresNomes: row.setores_nomes || row.setoresNomes,
     avatarUrl: row.avatar_url || row.avatarUrl,
+    discord_user_id: row.discord_user_id || row.discordUserId,
     permissoes: row.permissoes,
   });
 }
@@ -178,6 +180,7 @@ export function mapUserAccountToSupabaseRow(user: UserAccount) {
     setor_nome: norm.setorNome,
     setores_nomes: norm.setoresNomes,
     avatar_url: norm.avatarUrl,
+    discord_user_id: norm.discord_user_id || null,
     permissoes: norm.permissoes,
   };
 }
@@ -304,6 +307,7 @@ export function normalizeUserAccount(raw: any): UserAccount {
     setorNome,
     setoresNomes,
     avatarUrl,
+    discord_user_id: raw.discord_user_id || raw.discordUserId || undefined,
     permissoes: {
       acessoDashboard: raw.permissoes?.acessoDashboard ?? true,
       acessoOperacoes: raw.permissoes?.acessoOperacoes ?? true,

@@ -46,6 +46,7 @@ import { DriveDesignTab } from "@/components/operacoes/DriveDesignTab";
 import { NovaTarefaModal } from "@/components/operacoes/NovaTarefaModal";
 
 import { getActiveUser, fetchUsersFromSupabase, UserAccount } from "@/lib/authPermissions";
+import { PontoGateModal } from "@/components/torres/PontoGateModal";
 import { useBranding } from "@/lib/branding";
 import { useRealtimeSubscription } from "@/lib/realtimeSync";
 import { supabase } from "@/lib/supabase";
@@ -213,6 +214,9 @@ export default function CentralOperacoesPage() {
 
   return (
     <div className="flex min-h-screen">
+      {/* Modal Bloqueador de Ponto de Entrada */}
+      <PontoGateModal currentUser={activeUser} />
+
       {/* Sidebar Fixa Coursue */}
       <AppSidebar />
 
