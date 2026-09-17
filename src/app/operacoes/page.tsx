@@ -249,11 +249,11 @@ export default function CentralOperacoesPage() {
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 pt-1">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-5 pt-1">
                 <img
                   src={branding.logoWhiteUrl || "/hashira-logo-white.png"}
                   alt={branding.nomeMarca || "HASHIRA"}
-                  className="h-12 w-auto max-w-[160px] object-contain shrink-0 drop-shadow-md"
+                  className="h-20 md:h-24 w-auto max-w-[280px] object-contain shrink-0 drop-shadow-md"
                 />
                 <div>
                   <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight font-['Plus_Jakarta_Sans']">

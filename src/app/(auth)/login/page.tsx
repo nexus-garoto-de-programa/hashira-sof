@@ -117,7 +117,7 @@ export default function LoginPage() {
           <img
             src={branding.logoWhiteUrl || "/hashira-logo-white.png"}
             alt={branding.nomeMarca || "HASHIRA"}
-            className="h-14 w-auto max-w-[200px] object-contain drop-shadow-2xl"
+            className="h-24 md:h-28 w-auto max-w-[340px] object-contain drop-shadow-2xl"
           />
         </div>
 
@@ -156,7 +156,7 @@ export default function LoginPage() {
             <img
               src="/hashira-logo-purple.png"
               alt="HASHIRA"
-              className="h-10 w-auto object-contain"
+              className="h-16 w-auto object-contain"
             />
           </div>
 
