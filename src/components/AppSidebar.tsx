@@ -136,7 +136,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                   : (branding.logoPurpleUrl || "/hashira-logo-purple.png")
               }
               alt={branding.nomeMarca || "HASHIRA"}
-              className="h-8 w-auto max-w-[140px] object-contain transition-transform group-hover:scale-105"
+              className="h-9 w-auto max-w-[150px] object-contain transition-transform group-hover:scale-105"
             />
             <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border" style={{ backgroundColor: "var(--surface-alt)", borderColor: "var(--border)", color: "var(--text-muted)" }}>
               PRO
