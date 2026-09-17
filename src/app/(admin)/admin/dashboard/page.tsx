@@ -59,9 +59,11 @@ import { getActiveUser } from "@/lib/authPermissions";
 import { toast } from "sonner";
 
 import { useRealtimeSubscription } from "@/lib/realtimeSync";
+import { useGlobalLoading } from "@/context/LoadingContext";
 
 export default function AdminDashboardPage() {
   const router = useRouter();
+  const { withLoading } = useGlobalLoading();
   const [demandas, setDemandas] = useState<Demanda[]>([]);
   const [setorSelecionado, setSetorSelecionado] = useState<string>("todos");
   const [searchQuery, setSearchQuery] = useState("");
@@ -219,8 +221,10 @@ export default function AdminDashboardPage() {
   if (!userChecked) return null;
 
   const handleDeleteDemanda = async (id: string) => {
-    await deleteDemandaFromSupabase(id);
-    toast.success("Demanda removida");
+    await withLoading(async () => {
+      await deleteDemandaFromSupabase(id);
+      toast.success("Demanda removida");
+    }, "Excluindo demanda...");
   };
 
   const handleUpdateStatus = async (demandaId: string, newStatus: any, comentario?: string) => {
@@ -271,8 +275,10 @@ export default function AdminDashboardPage() {
     // Optimistic update: atualiza o estado local IMEDIATAMENTE
     setDemandas((prev) => [objetoCompleto, ...prev]);
 
-    await saveDemandaToSupabase(objetoCompleto);
-    toast.success("Demanda criada e atribuída com sucesso!");
+    await withLoading(async () => {
+      await saveDemandaToSupabase(objetoCompleto);
+      toast.success("Demanda criada e atribuída com sucesso!");
+    }, "Criando e atribuindo demanda...");
   };
 
   const getSetorIcon = (iconName: string) => {

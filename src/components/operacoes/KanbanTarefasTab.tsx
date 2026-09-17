@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Clock, Tag, Flame, AlertCircle, GripVertical, CheckCircle2 } from "lucide-react";
 import { OperacoesTarefa, OperacoesProjeto, ColumnStatus, DEFAULT_KANBAN_COLUMNS } from "@/lib/operacoesData";
+import { useGlobalLoading } from "@/context/LoadingContext";
 
 interface KanbanTarefasTabProps {
   tarefas: OperacoesTarefa[];
@@ -22,6 +23,7 @@ export const KanbanTarefasTab: React.FC<KanbanTarefasTabProps> = ({
   projetos = [],
   onMoveTarefa,
 }) => {
+  const { withLoading } = useGlobalLoading();
   // Evita erros de hidratação SSR no Next.js aguardando o primeiro render no cliente
   const [isMounted, setIsMounted] = useState(false);
 
@@ -44,7 +46,9 @@ export const KanbanTarefasTab: React.FC<KanbanTarefasTabProps> = ({
     const sourceStatus = source.droppableId as ColumnStatus;
 
     if (onMoveTarefa) {
-      await onMoveTarefa(draggableId, destStatus, sourceStatus, source.index, destination.index);
+      await withLoading(async () => {
+        await onMoveTarefa(draggableId, destStatus, sourceStatus, source.index, destination.index);
+      }, "Atualizando status no quadro...");
     }
   };
 

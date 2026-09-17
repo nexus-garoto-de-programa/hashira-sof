@@ -33,6 +33,7 @@ import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from "rechar
 import { useRealtimeSubscription } from "@/lib/realtimeSync";
 import { PontoGateModal } from "@/components/torres/PontoGateModal";
 import { toast } from "sonner";
+import { useGlobalLoading } from "@/context/LoadingContext";
 
 type PeriodoFilter = "dia" | "semana" | "mes";
 
@@ -45,6 +46,7 @@ function getGreeting(): string {
 
 export default function CollaboratorDashboardPage() {
   const router = useRouter();
+  const { withLoading } = useGlobalLoading();
   const [demandas, setDemandas] = useState<Demanda[]>([]);
   const [user, setUser] = useState<UserAccount | null>(null);
 
@@ -260,14 +262,16 @@ export default function CollaboratorDashboardPage() {
     };
     // 1. Atualização otimista imediata na UI
     updateDemandasState([objetoCompleto, ...demandas]);
-    // 2. Persistência garantida no Supabase
-    try {
-      await saveDemandaToSupabase(objetoCompleto);
-      toast.success("Demanda criada e sincronizada com sucesso!");
-    } catch (e) {
-      console.error("Erro ao persistir demanda no Supabase:", e);
-      toast.error("Erro ao salvar demanda no banco de dados.");
-    }
+    // 2. Persistência garantida no Supabase com indicador visual
+    await withLoading(async () => {
+      try {
+        await saveDemandaToSupabase(objetoCompleto);
+        toast.success("Demanda criada e sincronizada com sucesso!");
+      } catch (e) {
+        console.error("Erro ao persistir demanda no Supabase:", e);
+        toast.error("Erro ao salvar demanda no banco de dados.");
+      }
+    }, "Salvando nova demanda...");
   };
 
   return (

@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
+import { Suspense } from "react";
 import { DotGridCanvas } from "@/components/DotGridCanvas";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { LoadingProvider } from "@/context/LoadingContext";
+import { NavigationLoadingTrigger } from "@/components/NavigationLoadingTrigger";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -25,15 +28,22 @@ export default function RootLayout({
     <html lang="pt-BR" suppressHydrationWarning>
       <body className={`${plusJakartaSans.variable} font-sans antialiased relative min-h-screen`} style={{ backgroundColor: 'var(--bg)', color: 'var(--text-primary)' }}>
         <ThemeProvider>
-          {/* Full screen interactive canvas dot grid background */}
-          <DotGridCanvas />
+          <LoadingProvider>
+            {/* Ouve eventos de navegação com Suspense boundary para searchParams */}
+            <Suspense fallback={null}>
+              <NavigationLoadingTrigger />
+            </Suspense>
 
-          {/* App Content */}
-          <div className="relative z-10 min-h-screen">
-            {children}
-          </div>
+            {/* Full screen interactive canvas dot grid background */}
+            <DotGridCanvas />
 
-          <Toaster position="bottom-right" richColors />
+            {/* App Content */}
+            <div className="relative z-10 min-h-screen">
+              {children}
+            </div>
+
+            <Toaster position="bottom-right" richColors />
+          </LoadingProvider>
         </ThemeProvider>
       </body>
     </html>
