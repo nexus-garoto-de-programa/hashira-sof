@@ -1,8 +1,11 @@
 "use client";
 
-import React from "react";
-import { Clock, ArrowRight, Paperclip } from "lucide-react";
+import React, { useMemo, useState, useEffect } from "react";
+import { Clock, ArrowRight, Paperclip, User } from "lucide-react";
 import { Demanda, HASHIRAS_SEED } from "@/lib/demands";
+import { useUserTags } from "@/lib/userTags";
+import { UserTagBadge } from "@/components/UserTagBadge";
+import { getStoredUsers, UserAccount } from "@/lib/authPermissions";
 
 interface DemandCardProps {
   demanda: Demanda;
@@ -15,6 +18,32 @@ export const DemandCard: React.FC<DemandCardProps> = ({
   onOpenDetails,
   layoutMode = "carousel",
 }) => {
+  const { getUserTagsList } = useUserTags();
+  const [usersList, setUsersList] = useState<UserAccount[]>(getStoredUsers);
+
+  useEffect(() => {
+    setUsersList(getStoredUsers());
+  }, []);
+
+  const colabTags = useMemo(() => {
+    if (!demanda.colaboradorId && !demanda.colaboradorNome && !demanda.colaboradorEmail) return [];
+    if (demanda.colaboradorId) {
+      const direct = getUserTagsList(demanda.colaboradorId);
+      if (direct.length > 0) return direct;
+    }
+    const matched = usersList.find(
+      (u) =>
+        (demanda.colaboradorEmail && u.email?.toLowerCase().trim() === demanda.colaboradorEmail.toLowerCase().trim()) ||
+        (demanda.colaboradorNome && u.nome?.toLowerCase().trim() === demanda.colaboradorNome.toLowerCase().trim()) ||
+        (demanda.colaboradorNome && u.nickname?.toLowerCase().trim() === demanda.colaboradorNome.toLowerCase().trim()) ||
+        (demanda.colaboradorNome && u.comoQuerSerChamado?.toLowerCase().trim() === demanda.colaboradorNome.toLowerCase().trim())
+    );
+    if (matched) {
+      return getUserTagsList(matched.id);
+    }
+    return [];
+  }, [demanda, getUserTagsList, usersList]);
+
   const setor = HASHIRAS_SEED.find((s) => s.id === demanda.setorId) || {
     badgeBg: "rgba(91, 80, 229, 0.1)",
     badgeText: "#5B50E5",
@@ -96,11 +125,24 @@ export const DemandCard: React.FC<DemandCardProps> = ({
         {/* Descrição legível */}
         {demanda.descricao && (
           <p
-            className="text-xs line-clamp-2 mb-3 leading-relaxed"
+            className="text-xs line-clamp-2 mb-2 leading-relaxed"
             style={{ color: "var(--text-secondary)" }}
           >
             {demanda.descricao}
           </p>
+        )}
+
+        {/* Colaborador Responsável & Tags */}
+        {demanda.colaboradorNome && (
+          <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+            <span className="text-[11px] font-medium flex items-center gap-1" style={{ color: "var(--text-secondary)" }}>
+              <User className="w-3 h-3 text-[#5B50E5]" />
+              <span className="truncate max-w-[120px]">{demanda.colaboradorNome}</span>
+            </span>
+            {colabTags.map((t) => (
+              <UserTagBadge key={t.id} tag={t} size="xs" />
+            ))}
+          </div>
         )}
       </div>
 

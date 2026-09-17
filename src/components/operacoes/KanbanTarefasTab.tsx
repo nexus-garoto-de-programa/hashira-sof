@@ -3,8 +3,11 @@
 import React, { useEffect, useState } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Clock, Tag, Flame, AlertCircle, GripVertical, CheckCircle2 } from "lucide-react";
-import { OperacoesTarefa, OperacoesProjeto, ColumnStatus, DEFAULT_KANBAN_COLUMNS } from "@/lib/operacoesData";
+import { OperacoesTarefa, OperacoesProjeto, ColumnStatus, DEFAULT_KANBAN_COLUMNS, TeamMember } from "@/lib/operacoesData";
 import { useGlobalLoading } from "@/context/LoadingContext";
+import { useUserTags } from "@/lib/userTags";
+import { UserTagBadge } from "@/components/UserTagBadge";
+import { getStoredUsers, UserAccount } from "@/lib/authPermissions";
 
 interface KanbanTarefasTabProps {
   tarefas: OperacoesTarefa[];
@@ -27,9 +30,31 @@ export const KanbanTarefasTab: React.FC<KanbanTarefasTabProps> = ({
   // Evita erros de hidratação SSR no Next.js aguardando o primeiro render no cliente
   const [isMounted, setIsMounted] = useState(false);
 
+  const { getUserTagsList } = useUserTags();
+  const [usersList, setUsersList] = useState<UserAccount[]>(getStoredUsers);
+
   useEffect(() => {
     setIsMounted(true);
+    setUsersList(getStoredUsers());
   }, []);
+
+  const getMembroTags = (membro?: TeamMember) => {
+    if (!membro) return [];
+    const directTags = getUserTagsList(membro.id);
+    if (directTags.length > 0) return directTags;
+
+    const matched = usersList.find(
+      (u) =>
+        (membro.email && u.email?.toLowerCase().trim() === membro.email.toLowerCase().trim()) ||
+        (membro.name && u.nome?.toLowerCase().trim() === membro.name.toLowerCase().trim()) ||
+        (membro.name && u.nickname?.toLowerCase().trim() === membro.name.toLowerCase().trim()) ||
+        (membro.name && u.comoQuerSerChamado?.toLowerCase().trim() === membro.name.toLowerCase().trim())
+    );
+    if (matched) {
+      return getUserTagsList(matched.id);
+    }
+    return [];
+  };
 
   const columns = DEFAULT_KANBAN_COLUMNS;
 
@@ -234,7 +259,7 @@ export const KanbanTarefasTab: React.FC<KanbanTarefasTabProps> = ({
 
                               {/* Card Footer: Responsável com Foto + Prazo */}
                               <div className="pt-2 flex items-center justify-between text-xs" style={{ borderTop: "1px solid var(--border)" }}>
-                                <div className="flex items-center gap-1.5 min-w-0">
+                                <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                                   {task.membro?.avatarUrl ? (
                                     <img
                                       src={task.membro.avatarUrl}
@@ -250,9 +275,12 @@ export const KanbanTarefasTab: React.FC<KanbanTarefasTabProps> = ({
                                       {task.membro?.initials || "US"}
                                     </div>
                                   )}
-                                  <span className="text-[11px] font-medium truncate max-w-[90px]" style={{ color: "var(--text-secondary)" }}>
+                                  <span className="text-[11px] font-medium truncate max-w-[80px]" style={{ color: "var(--text-secondary)" }}>
                                     {task.membro?.name}
                                   </span>
+                                  {getMembroTags(task.membro).map((t) => (
+                                    <UserTagBadge key={t.id} tag={t} size="xs" />
+                                  ))}
                                 </div>
 
                                 <span className="text-[10px] font-medium flex items-center gap-1 shrink-0" style={{ color: "var(--text-muted)" }}>

@@ -60,6 +60,10 @@ import { toast } from "sonner";
 
 import { useRealtimeSubscription } from "@/lib/realtimeSync";
 import { useGlobalLoading } from "@/context/LoadingContext";
+import { useUserTags } from "@/lib/userTags";
+import { UserTagBadge } from "@/components/UserTagBadge";
+import { getStoredUsers, UserAccount } from "@/lib/authPermissions";
+import { Tag as TagIcon } from "lucide-react";
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -71,10 +75,18 @@ export default function AdminDashboardPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [userChecked, setUserChecked] = useState(false);
 
+  const { tags, getUserTagsList } = useUserTags();
+  const [usersList, setUsersList] = useState<UserAccount[]>(getStoredUsers);
+  const [tagFiltro, setTagFiltro] = useState<string>("todas");
+
   const reloadDemandas = async () => {
     const remote = await fetchDemandasFromSupabase();
     setDemandas(remote);
   };
+
+  useEffect(() => {
+    setUsersList(getStoredUsers());
+  }, []);
 
   useEffect(() => {
     const user = getActiveUser();
@@ -93,7 +105,7 @@ export default function AdminDashboardPage() {
 
   // Hook de Sincronização em Tempo Real (Supabase Realtime + Cross-Tab Broadcast + Window Focus + Polling)
   useRealtimeSubscription({
-    topics: ["demandas", "tarefas", "setores", "usuarios", "branding"],
+    topics: ["demandas", "tarefas", "setores", "usuarios", "branding", "tags", "user_tags"],
     onUpdate: reloadDemandas,
     pollIntervalMs: 8000,
   });
@@ -103,6 +115,25 @@ export default function AdminDashboardPage() {
     saveStoredDemandas(novas);
   };
 
+  const getDemandColabTags = (demanda: Demanda) => {
+    if (!demanda.colaboradorId && !demanda.colaboradorNome && !demanda.colaboradorEmail) return [];
+    if (demanda.colaboradorId) {
+      const direct = getUserTagsList(demanda.colaboradorId);
+      if (direct.length > 0) return direct;
+    }
+    const matched = usersList.find(
+      (u) =>
+        (demanda.colaboradorEmail && u.email?.toLowerCase().trim() === demanda.colaboradorEmail.toLowerCase().trim()) ||
+        (demanda.colaboradorNome && u.nome?.toLowerCase().trim() === demanda.colaboradorNome.toLowerCase().trim()) ||
+        (demanda.colaboradorNome && u.nickname?.toLowerCase().trim() === demanda.colaboradorNome.toLowerCase().trim()) ||
+        (demanda.colaboradorNome && u.comoQuerSerChamado?.toLowerCase().trim() === demanda.colaboradorNome.toLowerCase().trim())
+    );
+    if (matched) {
+      return getUserTagsList(matched.id);
+    }
+    return [];
+  };
+
   const demandasFiltradas = useMemo(() => {
     return demandas.filter((d) => {
       const matchSetor = setorSelecionado === "todos" || d.setorId === setorSelecionado;
@@ -110,9 +141,11 @@ export default function AdminDashboardPage() {
         d.titulo.toLowerCase().includes(searchQuery.toLowerCase()) ||
         d.setorNome.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (d.colaboradorNome && d.colaboradorNome.toLowerCase().includes(searchQuery.toLowerCase()));
-      return matchSetor && matchSearch;
+      const dTags = getDemandColabTags(d);
+      const matchTag = tagFiltro === "todas" || dTags.some((t) => t.id === tagFiltro);
+      return matchSetor && matchSearch && matchTag;
     });
-  }, [demandas, setorSelecionado, searchQuery]);
+  }, [demandas, setorSelecionado, searchQuery, tagFiltro, usersList, getUserTagsList]);
 
   // Estado dos filtros avançados do Gráfico Geral
   const [chartViewType, setChartViewType] = useState<"barras" | "donut" | "area">("barras");
@@ -929,39 +962,77 @@ export default function AdminDashboardPage() {
 
         {/* Control Table */}
         <section className="space-y-3 pt-2">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3" style={{ borderBottom: '1px solid var(--border)' }}>
-            <div>
-              <h2 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
-                Todas as Demandas Cadastradas
-              </h2>
-              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                Visão detalhada e gerenciamento de status
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2.5 w-full sm:w-auto">
-              <div className="relative flex-1 sm:w-72">
-                <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: 'var(--text-muted)' }} />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Buscar por título ou colaborador…"
-                  className="coursue-input pl-9 text-xs py-2"
-                  style={{ borderRadius: "var(--radius-md)" }}
-                />
+          <div className="flex flex-col gap-3 pb-3" style={{ borderBottom: '1px solid var(--border)' }}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
+                  Todas as Demandas Cadastradas
+                </h2>
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  Visão detalhada e gerenciamento de status
+                </p>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setShowCreateModal(true)}
-                className="px-3.5 py-2 text-xs font-bold text-white bg-[#5B50E5] hover:bg-[#483EA8] active:bg-[#3D3490] transition-colors flex items-center gap-1.5 shadow-xs shrink-0"
-                style={{ borderRadius: "var(--radius-md)" }}
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Nova</span>
-              </button>
+              <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                <div className="relative flex-1 sm:w-72">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: 'var(--text-muted)' }} />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Buscar por título ou colaborador…"
+                    className="coursue-input pl-9 text-xs py-2"
+                    style={{ borderRadius: "var(--radius-md)" }}
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(true)}
+                  className="px-3.5 py-2 text-xs font-bold text-white bg-[#5B50E5] hover:bg-[#483EA8] active:bg-[#3D3490] transition-colors flex items-center gap-1.5 shadow-xs shrink-0"
+                  style={{ borderRadius: "var(--radius-md)" }}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Nova</span>
+                </button>
+              </div>
             </div>
+
+            {/* Filtro Rápido por Tag */}
+            {tags.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1 mr-1">
+                  <TagIcon className="w-3 h-3 text-slate-400" />
+                  Filtrar por tag:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setTagFiltro("todas")}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${
+                    tagFiltro === "todas"
+                      ? "bg-[#5B50E5] text-white shadow-xs font-semibold"
+                      : "bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                  }`}
+                >
+                  Todas
+                </button>
+                {tags.map((t) => {
+                  const isSelected = tagFiltro === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setTagFiltro(isSelected ? "todas" : t.id)}
+                      className={`transition-all rounded-full ${
+                        isSelected ? "ring-2 ring-offset-1 ring-[#5B50E5]" : "opacity-80 hover:opacity-100"
+                      }`}
+                    >
+                      <UserTagBadge tag={t} size="xs" />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div
@@ -994,7 +1065,9 @@ export default function AdminDashboardPage() {
                       </td>
                     </tr>
                   ) : (
-                    demandasFiltradas.map((d) => (
+                    demandasFiltradas.map((d) => {
+                      const colabTags = getDemandColabTags(d);
+                      return (
                       <tr
                         key={d.id}
                         className="transition-colors hover:bg-black/5 dark:hover:bg-white/5"
@@ -1006,7 +1079,18 @@ export default function AdminDashboardPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                          {d.colaboradorNome || "Geral"}
+                          <div className="flex flex-col gap-1 items-start">
+                            <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                              {d.colaboradorNome || "Geral"}
+                            </span>
+                            {colabTags.length > 0 && (
+                              <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                                {colabTags.map((t) => (
+                                  <UserTagBadge key={t.id} tag={t} size="xs" />
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{d.prazo}</td>
                         <td className="px-4 py-3">
@@ -1048,7 +1132,8 @@ export default function AdminDashboardPage() {
                           </button>
                         </td>
                       </tr>
-                    ))
+                      );
+                    })
                   )}
                 </tbody>
               </table>

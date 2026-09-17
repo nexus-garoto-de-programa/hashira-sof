@@ -27,6 +27,7 @@ import {
   Globe,
   RotateCcw,
   Save,
+  Tag as TagIcon,
 } from "lucide-react";
 import {
   getActiveUser,
@@ -60,8 +61,12 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { useRealtimeSubscription } from "@/lib/realtimeSync";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { useUserTags } from "@/lib/userTags";
+import { UserTagBadge } from "@/components/UserTagBadge";
+import { ManageUserTagsModal } from "@/components/admin/ManageUserTagsModal";
+import { TagsManagementTab } from "@/components/admin/TagsManagementTab";
 
-type ConfigTab = "acessos" | "equipe" | "setores" | "visualizacao" | "branding";
+type ConfigTab = "acessos" | "equipe" | "setores" | "tags" | "visualizacao" | "branding";
 
 function AdminConfiguracoesContent() {
   const router = useRouter();
@@ -74,6 +79,11 @@ function AdminConfiguracoesContent() {
   const [users, setUsers] = useState<UserAccount[]>([]);
   const [setores, setSetores] = useState<SetorHashira[]>([]);
   const [userChecked, setUserChecked] = useState(false);
+
+  // Hook de Tags e Estados de Atribuição
+  const { tags, userTags, getUserTagsList } = useUserTags();
+  const [userToManageTags, setUserToManageTags] = useState<UserAccount | null>(null);
+  const [tagFilter, setTagFilter] = useState<string>("todas");
 
   // Estados para busca e modais
   const [searchQuery, setSearchQuery] = useState("");
@@ -99,24 +109,34 @@ function AdminConfiguracoesContent() {
   const [brandNome, setBrandNome] = useState(activeBranding?.nomeMarca || DEFAULT_BRANDING.nomeMarca);
   const [brandSlogan, setBrandSlogan] = useState(activeBranding?.slogan || DEFAULT_BRANDING.slogan);
 
-  // Filtro de usuários (useMemo no topo, antes de qualquer early return)
+  // Filtro de usuários considerando busca e tag selecionada
   const filteredUsers = useMemo(() => {
-    if (!searchQuery.trim()) return users;
+    let result = users;
+
+    // Filtro por tag
+    if (tagFilter !== "todas") {
+      const usersWithTag = new Set(
+        userTags.filter((ut) => ut.tagId === tagFilter).map((ut) => ut.userId)
+      );
+      result = result.filter((u) => usersWithTag.has(u.id));
+    }
+
+    if (!searchQuery.trim()) return result;
     const q = searchQuery.toLowerCase().trim();
-    return users.filter(
+    return result.filter(
       (u) =>
         u.nome?.toLowerCase().includes(q) ||
         u.email?.toLowerCase().includes(q) ||
         u.setorNome?.toLowerCase().includes(q) ||
         u.comoQuerSerChamado?.toLowerCase().includes(q)
     );
-  }, [users, searchQuery]);
+  }, [users, searchQuery, tagFilter, userTags]);
 
   // Efeito 1: Montagem e Sincronização da Aba via URL
   useEffect(() => {
     setIsMounted(true);
     const tabParam = searchParams?.get("tab") as ConfigTab;
-    if (tabParam && ["acessos", "equipe", "setores", "visualizacao", "branding"].includes(tabParam)) {
+    if (tabParam && ["acessos", "equipe", "setores", "tags", "visualizacao", "branding"].includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, [searchParams]);
@@ -348,6 +368,7 @@ function AdminConfiguracoesContent() {
     { id: "acessos" as ConfigTab, label: "Gestão de Acessos", icon: ShieldCheck },
     { id: "equipe" as ConfigTab, label: "Equipe & Membros", icon: Users },
     { id: "setores" as ConfigTab, label: "Setores (Hashiras)", icon: Layers },
+    { id: "tags" as ConfigTab, label: "Tags & Atribuições", icon: TagIcon },
     { id: "branding" as ConfigTab, label: "Identidade Visual & Logo", icon: Palette },
     { id: "visualizacao" as ConfigTab, label: "Modo de Visualização", icon: RefreshCw },
   ];
@@ -503,9 +524,14 @@ function AdminConfiguracoesContent() {
                                 className="h-9 w-9 rounded-full object-cover shrink-0 ring-1 ring-white/10"
                               />
                               <div>
-                                <span className="font-extrabold block" style={{ color: "var(--text-primary)" }}>
-                                  {u.comoQuerSerChamado || u.nickname || u.nome}
-                                </span>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-extrabold block" style={{ color: "var(--text-primary)" }}>
+                                    {u.comoQuerSerChamado || u.nickname || u.nome}
+                                  </span>
+                                  {getUserTagsList(u.id).map((tagObj) => (
+                                    <UserTagBadge key={tagObj.id} tag={tagObj} size="xs" />
+                                  ))}
+                                </div>
                                 <span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
                                   {u.email}
                                 </span>
@@ -626,76 +652,178 @@ function AdminConfiguracoesContent() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <h2 className="text-xl font-extrabold font-['Plus_Jakarta_Sans']" style={{ color: "var(--text-primary)" }}>
-                  Membros da Equipe ({users.length})
+                  Membros da Equipe ({filteredUsers.length} de {users.length})
                 </h2>
                 <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                  Cadastre, visualize e gerencie todos os colaboradores vinculados aos setores.
+                  Cadastre, visualize e gerencie colaboradores, departamentos e suas tags de atribuição.
                 </p>
               </div>
 
               <div className="flex items-center gap-3 w-full sm:w-auto">
                 <button
                   onClick={() => setShowAddUserModal(true)}
-                  className="coursue-btn-primary py-2.5 px-5 text-xs shadow-lg shadow-[#5B50E5]/25 flex items-center gap-2"
+                  className="coursue-btn-primary py-2.5 px-5 text-xs shadow-lg shadow-[#5B50E5]/25 flex items-center gap-2 cursor-pointer"
                 >
                   <Plus className="w-4 h-4" /> Novo Colaborador
                 </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {users.map((u) => {
-                const isAdm = u.papel === "administrador" || u.email === "mhvzbusiness@gmail.com";
-                const userAvatar = u.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(u.nome || "User")}`;
-                return (
-                  <div
-                    key={u.id}
-                    className="coursue-card p-6 rounded-[24px] border border-border shadow-sm flex flex-col justify-between space-y-4 hover:shadow-md transition-all group"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        <img
-                          src={userAvatar}
-                          alt={u.nome || "Usuário"}
-                          className="h-12 w-12 rounded-full object-cover shrink-0 ring-2 ring-[#5B50E5]/30"
-                        />
-                        <div className="min-w-0">
-                          <h4 className="text-sm font-extrabold font-['Plus_Jakarta_Sans'] truncate" style={{ color: "var(--text-primary)" }}>
-                            {u.comoQuerSerChamado || u.nickname || u.nome || "Colaborador"}
-                          </h4>
-                          <span className="text-[11px] block truncate" style={{ color: "var(--text-secondary)" }}>
-                            {u.email}
+            {/* Filtros: Busca + Chips de Tags */}
+            <div className="space-y-3 p-4 rounded-2xl border" style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}>
+              <div className="relative">
+                <Search className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Buscar colaborador por nome, e-mail ou setor..."
+                  className="coursue-input text-xs pl-10 py-2 w-full"
+                />
+              </div>
+
+              {/* Chips de Filtro por Tag */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 shrink-0 flex items-center gap-1 mr-1">
+                  <TagIcon className="w-3 h-3" /> Filtrar por Tag:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setTagFilter("todas")}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 border cursor-pointer ${
+                    tagFilter === "todas"
+                      ? "bg-[#5B50E5] text-white border-[#5B50E5] shadow-xs"
+                      : "bg-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 border-zinc-200 dark:border-zinc-800"
+                  }`}
+                >
+                  Todas ({users.length})
+                </button>
+                {tags.map((t) => {
+                  const count = userTags.filter((ut) => ut.tagId === t.id).length;
+                  const isSelected = tagFilter === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setTagFilter(isSelected ? "todas" : t.id)}
+                      className={`px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 border flex items-center gap-1.5 cursor-pointer ${
+                        isSelected ? "text-white shadow-xs" : "hover:opacity-80"
+                      }`}
+                      style={{
+                        backgroundColor: isSelected ? t.cor : `${t.cor}15`,
+                        color: isSelected ? "#FFFFFF" : t.cor,
+                        borderColor: isSelected ? t.cor : `${t.cor}30`,
+                      }}
+                    >
+                      <span>{t.nome}</span>
+                      <span
+                        className="px-1.5 py-0.2 rounded-full text-[10px] font-extrabold"
+                        style={{
+                          backgroundColor: isSelected ? "rgba(255,255,255,0.25)" : `${t.cor}25`,
+                        }}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {filteredUsers.length === 0 ? (
+              <div className="text-center py-12 border border-dashed rounded-3xl" style={{ borderColor: "var(--border)" }}>
+                <Users className="w-8 h-8 mx-auto text-zinc-400 mb-2 opacity-50" />
+                <p className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
+                  Nenhum colaborador encontrado
+                </p>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Tente ajustar a busca ou o filtro de tags selecionado.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {filteredUsers.map((u) => {
+                  const isAdm = u.papel === "administrador" || u.email === "mhvzbusiness@gmail.com";
+                  const userAvatar = u.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(u.nome || "User")}`;
+                  const userCurrentTags = getUserTagsList(u.id);
+
+                  return (
+                    <div
+                      key={u.id}
+                      className="coursue-card p-6 rounded-[24px] border shadow-sm flex flex-col justify-between space-y-4 hover:shadow-md transition-all group"
+                      style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <img
+                            src={userAvatar}
+                            alt={u.nome || "Usuário"}
+                            className="h-12 w-12 rounded-full object-cover shrink-0 ring-2 ring-[#5B50E5]/30"
+                          />
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-extrabold font-['Plus_Jakarta_Sans'] truncate" style={{ color: "var(--text-primary)" }}>
+                              {u.comoQuerSerChamado || u.nickname || u.nome || "Colaborador"}
+                            </h4>
+                            <span className="text-[11px] block truncate" style={{ color: "var(--text-secondary)" }}>
+                              {u.email}
+                            </span>
+                          </div>
+                        </div>
+
+                        {u.id !== currentUser.id && (
+                          <button
+                            onClick={() => handleDeleteUser(u.id, u.nome || "Usuário")}
+                            className="p-2 rounded-xl text-rose-500 hover:bg-rose-500/10 transition-colors opacity-60 group-hover:opacity-100 cursor-pointer"
+                            title="Remover Colaborador"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Tags Atribuídas e Botão de Gerenciamento */}
+                      <div className="space-y-1.5 pt-2 border-t border-border">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1">
+                            <TagIcon className="w-3 h-3 text-[#5B50E5]" /> Tags & Atribuições
                           </span>
+                          <button
+                            type="button"
+                            onClick={() => setUserToManageTags(u)}
+                            className="text-[10px] font-bold text-[#5B50E5] hover:underline flex items-center gap-0.5 cursor-pointer"
+                          >
+                            <Plus className="w-3 h-3" /> Gerenciar
+                          </button>
+                        </div>
+
+                        <div className="flex flex-wrap gap-1 items-center min-h-[26px]">
+                          {userCurrentTags.length === 0 ? (
+                            <span className="text-[10px] italic text-zinc-400">Nenhuma tag atribuída</span>
+                          ) : (
+                            userCurrentTags.map((tagObj) => (
+                              <UserTagBadge key={tagObj.id} tag={tagObj} size="xs" />
+                            ))
+                          )}
                         </div>
                       </div>
 
-                      {u.id !== currentUser.id && (
-                        <button
-                          onClick={() => handleDeleteUser(u.id, u.nome || "Usuário")}
-                          className="p-2 rounded-xl text-rose-500 hover:bg-rose-500/10 transition-colors opacity-60 group-hover:opacity-100"
-                          title="Remover Colaborador"
+                      <div className="pt-3 border-t border-border flex items-center justify-between text-xs">
+                        <span className="font-semibold" style={{ color: "var(--text-secondary)" }}>
+                          {u.setorNome || "Geral"}
+                        </span>
+                        <span
+                          className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md ${
+                            isAdm ? "bg-[#5B50E5]/15 text-[#5B50E5]" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
+                          }`}
                         >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
+                          {u.papel}
+                        </span>
+                      </div>
                     </div>
-
-                    <div className="pt-3 border-t border-border flex items-center justify-between text-xs">
-                      <span className="font-semibold" style={{ color: "var(--text-secondary)" }}>
-                        {u.setorNome || "Geral"}
-                      </span>
-                      <span
-                        className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md ${
-                          isAdm ? "bg-[#5B50E5]/15 text-[#5B50E5]" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
-                        }`}
-                      >
-                        {u.papel}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
         )}
 
@@ -777,7 +905,14 @@ function AdminConfiguracoesContent() {
           </section>
         )}
 
-        {/* ── ABA 4: MODO DE VISUALIZAÇÃO (ADMIN / COLABORADOR) ── */}
+        {/* ── ABA: TAGS & ATRIBUIÇÕES ── */}
+        {activeTab === "tags" && (
+          <section className="space-y-6">
+            <TagsManagementTab users={users} />
+          </section>
+        )}
+
+        {/* ── ABA: MODO DE VISUALIZAÇÃO (ADMIN / COLABORADOR) ── */}
         {activeTab === "visualizacao" && (
           <section className="space-y-6 max-w-4xl">
             <div>
@@ -1372,6 +1507,14 @@ function AdminConfiguracoesContent() {
           </div>
         </div>
       )}
+
+      {/* Modal Gerenciar Tags do Colaborador */}
+      <ManageUserTagsModal
+        open={!!userToManageTags}
+        user={userToManageTags}
+        onClose={() => setUserToManageTags(null)}
+        onTagsUpdated={reloadData}
+      />
 
     </div>
   );

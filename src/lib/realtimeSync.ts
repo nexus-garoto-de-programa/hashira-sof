@@ -17,6 +17,8 @@ export type RealtimeTopic =
   | "checklist"
   | "ponto"
   | "discord_status"
+  | "tags"
+  | "user_tags"
   | "all";
 
 // 1. Cross-Tab Broadcast Channel (instantâneo entre abas do mesmo navegador)
